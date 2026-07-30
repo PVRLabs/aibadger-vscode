@@ -2,7 +2,7 @@
   "name": "ai-badger",
   "displayName": "AI Badger",
   "description": "Use AI Badger from the VS Code Explorer to generate focused repository context for ChatGPT, Claude, and other AI chats.",
-  "version": "0.0.1",
+  "version": "0.0.2",
   "publisher": "pvrlabs",
   "license": "MIT",
   "icon": "media/ai-badger-icon.png",

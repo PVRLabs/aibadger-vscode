@@ -1,6 +1,6 @@
 # AI Badger for VS Code
 
-![AI Badger](media/ai-badger-logo.jpg)
+![AI Badger](https://raw.githubusercontent.com/PVRLabs/aibadger-vscode/main/media/ai-badger-logo.jpg)
 
 Generate focused, token-efficient repository context for ChatGPT, Claude, Grok, and other AI chats—directly from the VS Code Explorer.
 

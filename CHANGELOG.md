@@ -2,6 +2,6 @@
 
 All notable changes to the AI Badger VS Code extension are documented here.
 
-## [Unreleased]
+## [0.0.1] - 2026-07-29
 
-- Prepare the independently releasable AI Badger VS Code companion.
+- Initial release of the AI Badger VS Code companion.

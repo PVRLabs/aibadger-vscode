@@ -1,53 +1,96 @@
 # AI Badger for VS Code
 
-AI Badger is the official VS Code companion for the separately installed
-[AI Badger CLI](https://github.com/PVRLabs/aibadger). It helps you select
-relevant project context, generate a focused prompt locally, and continue in
-the AI chat tool of your choice.
+![AI Badger](media/ai-badger-logo.jpg)
 
-Install the CLI first using the [AI Badger installation guide](https://github.com/PVRLabs/aibadger/blob/main/docs/install.md), then install this extension from a VSIX or the Visual Studio Marketplace when it is published.
+Generate focused, token-efficient repository context for ChatGPT, Claude, Grok, and other AI chats—directly from the VS Code Explorer.
 
-## Two-step workflow
+Select the project, folder, or files that matter, describe what you need, and get context that is easier for an AI chat to use than a dump of the entire repository.
 
-1. Install `badger` and make it available on `PATH`, or configure its full executable path in VS Code settings.
-2. Open a project, choose an AI Badger command from the Explorer or Command Palette, answer the workflow prompts, and paste the generated context into ChatGPT, Claude, or another AI chat.
+**Local-first · AI-provider independent · No repository uploads**
 
-The extension runs the local CLI and does not download, install, or host an AI model.
+This extension uses the separately installed, open-source [AI Badger CLI](https://github.com/PVRLabs/aibadger) as its local engine. It does not require an AI-provider API key.
 
-## Commands
+[▶ Try the AI Badger Interactive Demo](https://pvrlabs.xyz/aibadger/demo.html)
 
-- `AI Badger: Ask About Project`
-- `AI Badger: Ask About Folder`
-- `AI Badger: Ask About File…`
-- `AI Badger: Ask About Selected Files…`
-- `AI Badger: Copy Selected File…`
-- `AI Badger: Copy Selected Files…`
+<!-- TODO: Replace this interactive demo link with a VS Code-specific GIF showing the Explorer workflow when one is available. -->
 
-Most commands are also available from Explorer and editor context menus.
+## Why AI Badger?
 
-## Settings and compatibility
+- **Explorer-native workflow:** Start from the project, folder, file, or multi-file selection already in VS Code.
+- **Focused context:** Give your AI chat the relevant code and a clear question instead of the whole repository.
+- **Local-first processing:** The extension invokes the local CLI on your machine.
+- **Works with your AI chat:** Use the generated context with ChatGPT, Claude, Grok, or another AI chat.
+- **No provider key in the extension:** You choose where to paste the generated context.
 
-`aiBadger.executablePath` optionally selects the local Badger executable. Leave it empty to use `badger` on `PATH`. The `AIBADGER_EXECUTABLE` environment variable can override this setting for local development and tests.
+## How it works
 
-The extension requires the non-interactive `badger api prompt` and `badger api extract` operations described in the [CLI compatibility contract](docs/cli-compatibility.md). Missing or incompatible operations result in an actionable setup or upgrade message.
+1. Select a project, folder, file, or multiple files in the VS Code Explorer.
+2. Describe the task you want help with.
+3. Copy or continue with the generated focused context in the AI chat you choose.
 
-## Privacy and troubleshooting
+## Install
 
-AI Badger runs locally. This extension sends selected project paths and workflow input to the local CLI process; it does not transmit project content to a service, download dependencies at runtime, or install an AI provider. The generated prompt is copied or shown for you to paste into the AI service you choose.
+1. Install the AI Badger CLI:
 
-If a command cannot find Badger, run `badger --version`, confirm that VS Code can see the same `PATH`, or set `aiBadger.executablePath` to the executable's full path. If an API operation is unavailable, upgrade the [AI Badger CLI](https://github.com/PVRLabs/aibadger) or select a compatible executable.
+   ```bash
+   brew install pvrlabs/tap/badger
+   ```
 
-Report extension commands, setup detection, webview, and VS Code integration issues at [aibadger-vscode issues](https://github.com/PVRLabs/aibadger-vscode/issues). Report CLI/API, topology, file-selection, and generated-context issues at [aibadger issues](https://github.com/PVRLabs/aibadger/issues).
+   For Windows and other installation methods, see the [AI Badger installation guide](https://github.com/PVRLabs/aibadger/blob/main/docs/install.md).
 
-If AI Badger is useful, consider [starring the main AI Badger repository](https://github.com/PVRLabs/aibadger) to help others find it.
+2. Install **AI Badger** from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=pvrlabs.ai-badger).
+3. Open a repository in desktop VS Code, then use an AI Badger command from the Explorer context menu or Command Palette.
+
+The extension is desktop-only; it is not a `vscode.dev` web extension.
+
+## What you can do
+
+### Ask about your code
+
+Use these commands to start an AI Badger workflow for a specific scope. The extension collects the relevant repository context and guides you through preparing a focused prompt for your AI chat.
+
+* **AI Badger: Ask About Project** — Start with the entire open project as the available scope.
+* **AI Badger: Ask About Folder** — Focus the workflow on the selected folder and its contents.
+* **AI Badger: Ask About File…** — Ask a question about one selected file, with relevant repository context available when needed.
+* **AI Badger: Ask About Selected Files…** — Start from multiple files selected in the Explorer.
+
+### Copy files with a question
+
+Use these commands when you already know which files should be included. AI Badger formats the selected files together with your question and copies the result for use in an AI chat.
+
+* **AI Badger: Copy Selected File…** — Copy one file together with your question.
+* **AI Badger: Copy Selected Files…** — Copy multiple selected files together with your question.
+
+The project command is available from the Explorer toolbar. File and folder commands are available from Explorer and editor context menus where applicable. You can also find most commands in the Command Palette.
+
+## Privacy
+
+- The extension invokes the local AI Badger CLI and does not upload your repository to PVR Labs.
+- It does not bundle or host an AI model, and it does not require an AI-provider API key.
+- You control what generated context is copied and pasted into ChatGPT, Claude, Grok, or another external AI service.
+
+The extension sends selected paths and workflow input to the local CLI. If you deliberately paste generated context into an external AI service, that service receives what you pasted under its own terms.
+
+## Configuration and troubleshooting
+
+- Verify the CLI with `badger --version`.
+- If you installed the CLI while VS Code was open, restart VS Code so it can see the updated `PATH`.
+- Set `aiBadger.executablePath` to the full path of `badger` when it is not on the expected `PATH`.
+- If an operation is reported as incompatible, upgrade the AI Badger CLI.
+
+See the [CLI compatibility guide](https://github.com/PVRLabs/aibadger-vscode/blob/main/docs/cli-compatibility.md) for capability requirements and executable resolution details.
+
+## Support
+
+Report Explorer, command, setup, webview, or VS Code integration issues in the [extension repository](https://github.com/PVRLabs/aibadger-vscode/issues). Report CLI or generated-context issues in the [main AI Badger repository](https://github.com/PVRLabs/aibadger/issues).
 
 ## Development
-
-Requirements: Node.js, npm, and a supported desktop VS Code installation. The extension invokes a local executable and is not a web extension for `vscode.dev`.
 
 ```bash
 npm ci
 npm run verify
 ```
 
-Use `npm run test` for extension-host tests when VS Code test-host execution is available. Use `npm run package:contents` to inspect VSIX files and `npm run package:vsix` to create one. See [docs/releasing.md](docs/releasing.md) for the manual release process.
+See the [release guide](https://github.com/PVRLabs/aibadger-vscode/blob/main/docs/releasing.md) for packaging and publishing details.
+
+AI Badger for VS Code is published by [PVR Labs](https://github.com/PVRLabs).

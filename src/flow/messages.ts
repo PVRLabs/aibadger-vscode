@@ -1,4 +1,4 @@
-/** Exact product UI strings from issue #125 / plan / extension-spec. */
+/** Exact product UI strings shared by the extension workflow. */
 
 /** Shared wizard / dialog chrome. */
 export const ASK_DIALOG_TITLE = "AI Badger";
@@ -75,7 +75,7 @@ export function promptCopiedOpenFailedMessage(providerName: string): string {
 }
 
 /**
- * Exact success text after Prompt 2 is copied (extension-spec / plan).
+ * Exact success text after Prompt 2 is copied.
  * Shown on the post-copy panel so the user continues in the same AI chat.
  * No “open provider” action on this screen.
  */

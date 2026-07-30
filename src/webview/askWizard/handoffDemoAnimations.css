@@ -1,0 +1,59 @@
+@keyframes demo-copy {
+  0%, 7% { opacity: 1; transform: none; filter: none; }
+  10% { opacity: 1; transform: translateY(1px) scale(.97); filter: brightness(.82); }
+  13%, 58% { opacity: .45; transform: none; filter: none; }
+  64%, 100% { opacity: 0; transform: none; filter: none; }
+}
+@keyframes demo-goal {
+  0%, 57% { opacity: 1; transform: none; }
+  63%, 100% { opacity: 0; transform: translateY(-2px); }
+}
+@keyframes demo-out {
+  0%, 10% { opacity: .18; transform: translateX(-5px); }
+  16%, 28% { opacity: 1; transform: translateX(3px); }
+  34%, 87% { opacity: .22; transform: none; }
+  92%, 98% { opacity: 1; transform: translateX(3px); }
+  100% { opacity: .22; transform: none; }
+}
+@keyframes demo-out-map-label { 0%, 10% { opacity: .18; } 16%, 28% { opacity: 1; } 34%, 89% { opacity: .22; } 93%, 100% { opacity: 0; } }
+@keyframes demo-out-files-label { 0%, 89% { opacity: 0; } 94%, 100% { opacity: 1; } }
+@keyframes demo-prompt {
+  0%, 15% { opacity: 0; transform: translateX(-3px); box-shadow: none; }
+  22%, 34% { opacity: 1; transform: none; box-shadow: 0 0 0 1px var(--vscode-focusBorder); }
+  40%, 100% { opacity: 1; transform: none; box-shadow: none; }
+}
+@keyframes demo-selectors {
+  0%, 34% { opacity: 0; transform: translateY(3px); }
+  40%, 88% { opacity: 1; transform: none; }
+  92%, 100% { opacity: 0; transform: scaleY(.45); }
+}
+@keyframes demo-selector-summary {
+  0%, 89% { opacity: 0; transform: scaleY(1.8); }
+  93%, 100% { opacity: 1; transform: none; }
+}
+@keyframes demo-back {
+  0%, 42% { opacity: .18; transform: translateX(5px); }
+  48%, 61% { opacity: 1; transform: translateX(-3px); }
+  67%, 100% { opacity: .22; transform: none; }
+}
+@keyframes demo-title-step1 { 0%, 57% { opacity: 1; transform: none; } 63%, 100% { opacity: 0; transform: translateY(-3px); } }
+@keyframes demo-title-step2 { 0%, 57% { opacity: 0; transform: translateY(3px); } 63%, 100% { opacity: 1; transform: none; } }
+@keyframes demo-pasted {
+  0%, 55% { opacity: 0; transform: translateX(4px); }
+  61%, 100% { opacity: 1; transform: none; }
+}
+@keyframes demo-files {
+  0%, 55% { opacity: 0; transform: translateY(2px); filter: none; }
+  61%, 86% { opacity: 1; transform: none; filter: none; }
+  89% { opacity: 1; transform: translateY(1px) scale(.97); filter: brightness(.82); }
+  92%, 100% { opacity: 1; transform: none; filter: none; }
+}
+@keyframes demo-requested-files {
+  0%, 93% { opacity: 0; transform: translateX(-3px); }
+  96%, 100% { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .handoff-demo *, .handoff-demo *::before, .handoff-demo *::after { animation: none !important; transform: none !important; opacity: 1; }
+  .demo-title-step1, .demo-goal, .demo-copy, .demo-selectors { display: none; }
+}

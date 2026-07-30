@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta http-equiv="Content-Security-Policy" content="default-src 'none'; img-src {{CSP_SOURCE}} https: data:; style-src {{CSP_SOURCE}}; script-src {{CSP_SOURCE}};" />
+  <title>{{TITLE}}</title>
+  <link rel="stylesheet" href="{{STYLESHEET_URI}}" />
+</head>
+<body>
+  <div class="header">
+    {{LOGO_HTML}}
+    <div class="header-titles">
+      <h1 id="wizardTitle"></h1>
+      <span class="step-indicator" id="headerStep" aria-live="polite"></span>
+    </div>
+  </div>
+
+  <div id="step1" class="panel">
+    <div class="callout callout--warning hidden" id="executableWarning" role="alert" aria-live="polite">
+      <span class="callout__icon" aria-hidden="true">⚠️</span>
+      <span class="callout__message" id="executableWarningMessage"></span>
+      <button type="button" class="callout__link" id="resolveBadger"></button>
+    </div>
+    <p class="prompt-label" id="requestInputPrompt"></p>
+    <p class="hint" id="step1Hint"></p>
+    <label class="sr" for="goal">Your request</label>
+    <textarea
+      id="goal"
+      rows="6"
+      spellcheck="true"
+      autofocus
+    ></textarea>
+    <p class="error" id="step1Error" role="alert" aria-live="polite"></p>
+    <div class="actions">
+      <button type="button" class="secondary" id="step1Cancel"></button>
+      <div class="split" id="step1Split">
+        <button type="button" class="primary split-main" id="step1Copy"></button>
+        <button type="button" class="primary split-toggle" id="step1Toggle" aria-haspopup="menu" aria-expanded="false"></button>
+        <div class="menu hidden" id="step1Menu" role="menu"></div>
+      </div>
+    </div>
+  </div>
+
+  <div id="step2" class="panel hidden">
+    <div class="handoff-block">
+      <p class="handoff-headline" id="handoffHeadline"></p>
+      <p class="handoff-instruction" id="handoffInstruction"></p>
+      <details class="guide" id="guide" role="note">
+        <summary class="guide-header" id="hideGuide">
+          <span class="guide-title" id="guideTitle"></span>
+        </summary>
+        <div class="guide-content" id="guideContent">
+          <p class="guide-body" id="guideBody"></p>
+          <div class="guide-media" id="guideMedia" aria-label="">
+            <span class="guide-media-label sr" id="guideMediaLabel"></span>
+            <div class="handoff-demo" aria-hidden="true">
+              <div class="demo-panel demo-badger">
+                <div class="demo-panel-title">
+                  <span class="demo-dot"></span>
+                  <span class="demo-title-stage">
+                    <span class="demo-title-step demo-title-step1"><span class="demo-title-full">AI Badger Step 1 of 2</span><span class="demo-title-short">AI Badger 1/2</span></span>
+                    <span class="demo-title-step demo-title-step2"><span class="demo-title-full">AI Badger Step 2 of 2</span><span class="demo-title-short">AI Badger 2/2</span></span>
+                  </span>
+                </div>
+                <div class="demo-input demo-goal">Explain the handoff flow</div>
+                <div class="demo-button demo-copy">Copy to Clipboard</div>
+                <div class="demo-input demo-pasted"><span>FILE: src/flow/runAsk.ts</span><span>PREFIX: src/client</span><span>NEAR: package.json#scripts</span></div>
+                <div class="demo-button demo-files">Copy requested files</div>
+              </div>
+              <div class="demo-lane">
+                <span class="demo-arrow demo-arrow-out">→</span>
+                <span class="demo-out-label-stage">
+                  <span class="demo-arrow-label demo-out-map-label">project map</span>
+                  <span class="demo-arrow-label demo-out-files-label">requested files</span>
+                </span>
+                <span class="demo-arrow demo-arrow-back">←</span>
+                <span class="demo-arrow-label demo-back-label">selectors</span>
+              </div>
+              <div class="demo-panel demo-chat">
+                <div class="demo-panel-title"><span class="demo-dot"></span><span class="demo-chat-title-full">Browser AI Chat</span><span class="demo-chat-title-short">Browser Chat</span></div>
+                <div class="demo-message demo-prompt">[project map pasted]</div>
+                <div class="demo-selectors"><span>FILE: src/flow/runAsk.ts</span><span>PREFIX: src/client</span><span>NEAR: package.json#scripts</span></div>
+                <div class="demo-message demo-selector-summary">FILE · PREFIX · NEAR requests</div>
+                <div class="demo-message demo-requested-files">[requested files]</div>
+              </div>
+            </div>
+          </div>
+          <button type="button" class="guide-link" id="guideLink"></button>
+        </div>
+      </details>
+    </div>
+    <div class="summary hidden" id="promptSummary" aria-live="polite">
+      <div class="summary-heading">
+        <p class="summary-title" id="promptSummaryTitle"></p>
+        <p class="summary-note" id="promptSummaryNote"></p>
+      </div>
+      <div id="promptSummaryBody"></div>
+    </div>
+    <label class="sr" for="aiResponse">AI response</label>
+    <textarea
+      id="aiResponse"
+      rows="8"
+      spellcheck="false"
+    ></textarea>
+    <p class="error" id="step2Error" role="alert" aria-live="polite"></p>
+    <div class="actions">
+      <button type="button" class="secondary" id="step2Cancel"></button>
+      <button type="button" class="primary" id="step2Copy" disabled></button>
+    </div>
+  </div>
+
+  <div id="done" class="panel hidden">
+    <div class="completion-status" role="status">
+      <p class="completion-status__title" id="doneMessageTitle"></p>
+      <p class="completion-status__description" id="doneMessageDescription"></p>
+    </div>
+    <section class="next-steps" aria-labelledby="nextStepsTitle">
+      <h2 class="next-steps__heading" id="nextStepsTitle"></h2>
+      <ol class="next-steps__list" id="nextStepsList"></ol>
+    </section>
+    <p class="completion-footer" id="doneHint"></p>
+    <div class="actions">
+      <button type="button" class="secondary" id="startAgain"></button>
+      <button type="button" class="primary" id="doneClose"></button>
+    </div>
+  </div>
+
+  <script type="application/json" id="askWizardConfig">{{CONFIG_JSON}}</script>
+  <script src="{{SELECTOR_SCRIPT_URI}}"></script>
+  <script src="{{SCRIPT_URI}}"></script>
+</body>
+</html>

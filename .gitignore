@@ -1,0 +1,7 @@
+out
+node_modules
+.vscode-test
+*.vsix
+.badger-context
+coverage
+.DS_Store

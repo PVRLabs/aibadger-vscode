@@ -1,0 +1,25 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <!--
+    Toolbar / activity mark: letter B in a pointy-top hexagon
+    (flat-top badge rotated 90°). Uses currentColor for light/dark.
+  -->
+  <!-- Soft fill (hexagon body) -->
+  <path
+    fill="currentColor"
+    opacity="0.12"
+    d="M12 2.1L20.6 7v10L12 21.9 3.4 17V7L12 2.1z"
+  />
+  <!-- Outer hexagon stroke -->
+  <path
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.6"
+    stroke-linejoin="round"
+    d="M12 2.1L20.6 7v10L12 21.9 3.4 17V7L12 2.1z"
+  />
+  <!-- Bold capital B -->
+  <path
+    fill="currentColor"
+    d="M9.15 7.1h3.05c1.72 0 2.95.95 2.95 2.35 0 .95-.5 1.72-1.35 2.08.98.35 1.62 1.2 1.62 2.38 0 1.58-1.22 2.58-3.18 2.58H9.15V7.1zm1.72 1.35v2.15h1.22c.78 0 1.28-.4 1.28-1.08s-.5-1.07-1.28-1.07h-1.22zm0 3.48v2.55h1.45c.88 0 1.42-.45 1.42-1.28 0-.82-.54-1.27-1.42-1.27h-1.45z"
+  />
+</svg>

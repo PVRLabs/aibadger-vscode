@@ -1,0 +1,152 @@
+{
+  "name": "ai-badger",
+  "displayName": "AI Badger",
+  "description": "Use AI Badger from the VS Code Explorer to generate focused repository context for ChatGPT, Claude, and other AI chats.",
+  "version": "0.0.1",
+  "publisher": "pvrlabs",
+  "license": "MIT",
+  "engines": {
+    "vscode": "^1.85.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [],
+  "main": "./out/extension.js",
+  "contributes": {
+    "configuration": {
+      "title": "AI Badger",
+      "properties": {
+        "aiBadger.executablePath": {
+          "type": "string",
+          "default": "",
+          "description": "Path or command name for the local Badger CLI. Leave empty to use `badger` on PATH. The extension never downloads or installs Badger."
+        }
+      }
+    },
+    "commands": [
+      {
+        "command": "aiBadger.askAboutProject",
+        "title": "AI Badger: Ask About Project",
+        "icon": {
+          "light": "media/badger.svg",
+          "dark": "media/badger.svg"
+        }
+      },
+      {
+        "command": "aiBadger.askAboutFolder",
+        "title": "AI Badger: Ask About Folder"
+      },
+      {
+        "command": "aiBadger.askAboutFile",
+        "title": "AI Badger: Ask About File…"
+      },
+      {
+        "command": "aiBadger.askAboutSelectedFiles",
+        "title": "AI Badger: Ask About Selected Files…"
+      },
+      {
+        "command": "aiBadger.copyFileWithQuestion",
+        "title": "AI Badger: Copy Selected File…"
+      },
+      {
+        "command": "aiBadger.copyFilesWithQuestion",
+        "title": "AI Badger: Copy Selected Files…"
+      }
+    ],
+    "menus": {
+      "view/title": [
+        {
+          "command": "aiBadger.askAboutProject",
+          "when": "view == workbench.explorer.fileView",
+          "group": "navigation"
+        }
+      ],
+      "explorer/context": [
+        {
+          "command": "aiBadger.askAboutFolder",
+          "when": "explorerResourceIsFolder",
+          "group": "navigation@90"
+        },
+        {
+          "command": "aiBadger.askAboutFile",
+          "when": "!explorerResourceIsFolder && resourceScheme == file && !listMultiSelection",
+          "group": "navigation@90"
+        },
+        {
+          "command": "aiBadger.askAboutSelectedFiles",
+          "when": "!explorerResourceIsFolder && resourceScheme == file && listMultiSelection",
+          "group": "navigation@90"
+        },
+        {
+          "command": "aiBadger.copyFileWithQuestion",
+          "when": "!explorerResourceIsFolder && resourceScheme == file && !listMultiSelection",
+          "group": "navigation@91"
+        },
+        {
+          "command": "aiBadger.copyFilesWithQuestion",
+          "when": "!explorerResourceIsFolder && resourceScheme == file && listMultiSelection",
+          "group": "navigation@91"
+        }
+      ],
+      "editor/title/context": [
+        {
+          "command": "aiBadger.askAboutFile",
+          "when": "resourceScheme == file",
+          "group": "navigation@90"
+        },
+        {
+          "command": "aiBadger.copyFileWithQuestion",
+          "when": "resourceScheme == file",
+          "group": "navigation@91"
+        }
+      ],
+      "commandPalette": [
+        {
+          "command": "aiBadger.askAboutProject"
+        },
+        {
+          "command": "aiBadger.askAboutFolder"
+        },
+        {
+          "command": "aiBadger.askAboutFile"
+        },
+        {
+          "command": "aiBadger.askAboutSelectedFiles",
+          "when": "false"
+        },
+        {
+          "command": "aiBadger.copyFileWithQuestion",
+          "when": "resourceScheme == file || editorIsOpen"
+        },
+        {
+          "command": "aiBadger.copyFilesWithQuestion",
+          "when": "false"
+        }
+      ]
+    }
+  },
+  "scripts": {
+    "vscode:prepublish": "npm run compile",
+    "compile": "tsc -p ./ && node ./scripts/copy-webview-assets.mjs",
+    "watch": "node ./scripts/watch.mjs",
+    "lint": "eslint src --ext ts --cache --cache-location out/.eslintcache",
+    "test:unit:run": "mocha 'out/{scope,flow,client,context}/**/*.test.js' --ui tdd --timeout 5000",
+    "test:unit": "npm run compile && npm run test:unit:run",
+    "verify": "npm run compile && npm run lint && npm run test:unit:run",
+    "pretest": "npm run compile && npm run lint",
+    "test": "node ./out/test/runTest.js"
+  },
+  "devDependencies": {
+    "@types/mocha": "^10.0.10",
+    "@types/node": "^20.17.0",
+    "@types/vscode": "^1.85.0",
+    "@typescript-eslint/eslint-plugin": "^8.18.0",
+    "@typescript-eslint/parser": "^8.18.0",
+    "@vscode/test-electron": "^2.4.1",
+    "eslint": "^8.57.1",
+    "glob": "^11.0.0",
+    "mocha": "^12.0.0-rc.2",
+    "typescript": "^5.7.2"
+  }
+}

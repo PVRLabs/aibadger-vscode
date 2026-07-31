@@ -8,9 +8,35 @@ export type ScmResource = {
   resourceUri: ScmUri;
 };
 
+export type ScmSelectionError =
+  | "no-files"
+  | "non-file-resource"
+  | "folder"
+  | "missing-file"
+  | "stat-failed"
+  | "repository-root-unresolved"
+  | "cross-repository"
+  | "invalid-path";
+
+export type ResolvedScmFile = {
+  uri: ScmUri;
+  relativePath: string;
+};
+
+export type ResolvedScmSelection = {
+  repositoryRoot: string;
+  files: ResolvedScmFile[];
+};
+
 export type ScmSelectionResult =
-  | { ok: true; uris: ScmUri[] }
-  | { ok: false; reason: "no-files" | "non-file-resource" };
+  | { ok: true; value: ResolvedScmSelection }
+  | { ok: false; reason: ScmSelectionError };
+
+export type ScmSelectionDeps = {
+  stat(uri: ScmUri): Promise<{ isFile: boolean }>;
+  getRepositoryRoot(uri: ScmUri): Promise<string | undefined>;
+  getRelativePath(uri: ScmUri, repositoryRoot: string): string;
+};
 
 function uriKey(uri: ScmUri): string {
   return uri.toString();
@@ -28,19 +54,29 @@ function dedupe(uris: readonly ScmUri[]): ScmUri[] {
   });
 }
 
-/**
- * Normalize the arguments supplied by `scm/resourceState/context`.
- *
- * VS Code supplies the clicked SourceControlResourceState first and, for a
- * multi-selection, the selected SourceControlResourceState values as the
- * second argument. The clicked resource is authoritative when it is not in
- * that array. Only file URIs are accepted; there is deliberately no fallback
- * to the active editor or Explorer selection.
- */
-export function resolveScmSelection(
+function normalizeRelativePath(value: string): string | undefined {
+  const normalized = value.replaceAll("\\", "/");
+  if (
+    !normalized ||
+    normalized.startsWith("/") ||
+    /^[A-Za-z]:\//.test(normalized) ||
+    normalized === ".." ||
+    normalized.startsWith("../")
+  ) {
+    return undefined;
+  }
+  const segments = normalized.split("/");
+  if (segments.some((segment) => segment === "..")) {
+    return undefined;
+  }
+  return segments.filter((segment) => segment !== "." && segment !== "").join("/") || undefined;
+}
+
+/** Normalize SCM context arguments without falling back to another selection source. */
+export function resolveScmUris(
   clicked: ScmResource | undefined,
   selected: readonly ScmResource[] | undefined
-): ScmSelectionResult {
+): { ok: true; uris: ScmUri[] } | { ok: false; reason: "no-files" | "non-file-resource" } {
   const selectedUris = selected?.map((resource) => resource.resourceUri);
   const clickedUri = clicked?.resourceUri;
   const uris = clickedUri
@@ -56,4 +92,56 @@ export function resolveScmSelection(
     return { ok: false, reason: "non-file-resource" };
   }
   return { ok: true, uris };
+}
+
+/** Resolve SCM files to one Git root and stable root-relative POSIX paths. */
+export async function resolveScmSelection(
+  clicked: ScmResource | undefined,
+  selected: readonly ScmResource[] | undefined,
+  deps: ScmSelectionDeps
+): Promise<ScmSelectionResult> {
+  const normalized = resolveScmUris(clicked, selected);
+  if (!normalized.ok) {
+    return normalized;
+  }
+
+  const files: ResolvedScmFile[] = [];
+  let repositoryRoot: string | undefined;
+  const seenPaths = new Set<string>();
+  for (const uri of normalized.uris) {
+    let fileStat: { isFile: boolean };
+    try {
+      fileStat = await deps.stat(uri);
+    } catch (error) {
+      const code = (error as { code?: string }).code;
+      return {
+        ok: false,
+        reason: code === "ENOENT" || code === "FileNotFound" ? "missing-file" : "stat-failed",
+      };
+    }
+    if (!fileStat.isFile) {
+      return { ok: false, reason: "folder" };
+    }
+    const root = await deps.getRepositoryRoot(uri);
+    if (!root) {
+      return { ok: false, reason: "repository-root-unresolved" };
+    }
+    if (repositoryRoot && repositoryRoot !== root) {
+      return { ok: false, reason: "cross-repository" };
+    }
+    repositoryRoot = root;
+    const relativePath = normalizeRelativePath(deps.getRelativePath(uri, root));
+    if (!relativePath) {
+      return { ok: false, reason: "invalid-path" };
+    }
+    if (!seenPaths.has(relativePath)) {
+      seenPaths.add(relativePath);
+      files.push({ uri, relativePath });
+    }
+  }
+
+  if (!repositoryRoot || files.length === 0) {
+    return { ok: false, reason: "no-files" };
+  }
+  return { ok: true, value: { repositoryRoot, files } };
 }

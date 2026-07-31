@@ -158,17 +158,6 @@ h1 {
 .next-step-description {
   color: var(--vscode-descriptionForeground, var(--vscode-foreground));
 }
-.coming-soon-badge {
-  display: inline-block;
-  margin-left: 6px;
-  padding: 1px 5px;
-  border: 1px solid var(--vscode-widget-border, var(--vscode-descriptionForeground));
-  border-radius: 10px;
-  color: var(--vscode-descriptionForeground, var(--vscode-foreground));
-  font-size: 0.75rem;
-  line-height: 1.35;
-  white-space: nowrap;
-}
 .completion-footer {
   margin: 14px 0 0;
   color: var(--vscode-descriptionForeground, var(--vscode-foreground));

@@ -1,8 +1,8 @@
 {
   "name": "ai-badger",
   "displayName": "AI Badger",
-  "description": "Use AI Badger from the VS Code Explorer to generate focused repository context for ChatGPT, Claude, and other AI chats.",
-  "version": "0.0.2",
+  "description": "Copy files with paths for any AI chat, or use the local Badger CLI to generate focused repository context.",
+  "version": "0.0.3",
   "publisher": "pvrlabs",
   "license": "MIT",
   "icon": "media/ai-badger-icon.png",
@@ -56,11 +56,11 @@
       },
       {
         "command": "aiBadger.copyFileWithQuestion",
-        "title": "AI Badger: Copy Selected File…"
+        "title": "AI Badger: Copy File for AI"
       },
       {
         "command": "aiBadger.copyFilesWithQuestion",
-        "title": "AI Badger: Copy Selected Files…"
+        "title": "AI Badger: Copy Selected Files for AI"
       }
     ],
     "menus": {
@@ -80,34 +80,34 @@
         {
           "command": "aiBadger.askAboutFile",
           "when": "!explorerResourceIsFolder && resourceScheme == file && !listMultiSelection",
-          "group": "navigation@90"
+          "group": "navigation@91"
         },
         {
           "command": "aiBadger.askAboutSelectedFiles",
           "when": "!explorerResourceIsFolder && resourceScheme == file && listMultiSelection",
-          "group": "navigation@90"
+          "group": "navigation@91"
         },
         {
           "command": "aiBadger.copyFileWithQuestion",
           "when": "!explorerResourceIsFolder && resourceScheme == file && !listMultiSelection",
-          "group": "navigation@91"
+          "group": "navigation@90"
         },
         {
           "command": "aiBadger.copyFilesWithQuestion",
           "when": "!explorerResourceIsFolder && resourceScheme == file && listMultiSelection",
-          "group": "navigation@91"
+          "group": "navigation@90"
         }
       ],
       "editor/title/context": [
         {
           "command": "aiBadger.askAboutFile",
           "when": "resourceScheme == file",
-          "group": "navigation@90"
+          "group": "navigation@91"
         },
         {
           "command": "aiBadger.copyFileWithQuestion",
           "when": "resourceScheme == file",
-          "group": "navigation@91"
+          "group": "navigation@90"
         }
       ],
       "commandPalette": [

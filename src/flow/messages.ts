@@ -79,13 +79,13 @@ export function promptCopiedOpenFailedMessage(providerName: string): string {
  * Shown on the post-copy panel so the user continues in the same AI chat.
  * No “open provider” action on this screen.
  */
-export const NEXT_PROMPT_COPIED_TITLE = "Final handoff prompt copied.";
+export const NEXT_PROMPT_COPIED_TITLE = "✓ Requested code copied";
 
 export const NEXT_PROMPT_COPIED_DESCRIPTION =
-  "Paste it into the same AI chat to complete the handoff and continue the conversation.";
+  "Paste it into the same AI chat to continue.";
 
 export const PROMPT2_COPIED_MESSAGE =
-  `${NEXT_PROMPT_COPIED_TITLE} ${NEXT_PROMPT_COPIED_DESCRIPTION}`;
+  `${NEXT_PROMPT_COPIED_TITLE}. ${NEXT_PROMPT_COPIED_DESCRIPTION}`;
 
 /** Compact guidance shown after Prompt 2 is copied. */
 export const COMPLETION_NEXT_STEPS_TITLE = "Some ways you can continue";
@@ -106,7 +106,6 @@ export const COMPLETION_NEXT_STEPS = [
   {
     title: "Add more context when needed",
     description: "by right-clicking files in VS Code and copying them into the chat.",
-    comingSoon: true,
   },
 ] as const;
 

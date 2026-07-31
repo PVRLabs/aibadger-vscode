@@ -7,7 +7,6 @@ declare namespace AskWizardContract {
   type CompletionStep = {
     title: string;
     description: string;
-    comingSoon?: boolean;
   };
 
   type WebviewConfig = {

@@ -17,10 +17,6 @@ export const COPY_FILE_COMMAND = "aiBadger.copyFileWithQuestion";
 export const MAX_COPY_FILE_BYTES = 250 * 1024;
 export const MAX_COPY_PAYLOAD_BYTES = 1024 * 1024;
 
-export const COPY_FILES_INPUT_PROMPT =
-  "The selected file contents are already on your clipboard. Nothing was uploaded. Add a question and press Enter to copy them again with your question, or press Escape to keep the current clipboard.";
-export const COPY_FILES_INPUT_PLACEHOLDER =
-  "What should the AI help with? Press Enter to copy again";
 export const UNSUPPORTED_SELECTION_MESSAGE =
   "Select one or more files to copy with AI Badger.";
 export const CROSS_WORKSPACE_MESSAGE =
@@ -49,12 +45,6 @@ export type CopyFilesDeps = {
   stat(uri: CopyUri): Promise<CopyFileStat>;
   getOpenDocumentText(uri: CopyUri): string | undefined;
   readFile(uri: CopyUri): Promise<Uint8Array>;
-  showInputBox(options: {
-    title: string;
-    prompt: string;
-    placeHolder: string;
-    value: string;
-  }): Promise<string | undefined>;
   writeClipboard(text: string): Promise<void>;
   showInformationMessage(message: string): void;
   showErrorMessage(message: string): void;
@@ -135,7 +125,6 @@ type IndexedContextFile = (AdditionalContextFile | BinaryContextFile) & {
 type IndexedExcludedFile = ExcludedContextFile & { index: number };
 
 function fitPayload(
-  question: string | undefined,
   files: readonly IndexedContextFile[],
   excludedFiles: readonly IndexedExcludedFile[]
 ): {
@@ -146,7 +135,7 @@ function fitPayload(
   const included = [...files];
   const excluded = [...excludedFiles];
   let orderedExcluded = [...excluded].sort((a, b) => a.index - b.index);
-  let payload = formatAdditionalContext(question, included, orderedExcluded);
+  let payload = formatAdditionalContext(undefined, included, orderedExcluded);
 
   while (Buffer.byteLength(payload, "utf8") > MAX_COPY_PAYLOAD_BYTES) {
     const removed = included.pop();
@@ -159,7 +148,7 @@ function fitPayload(
       reason: TOTAL_PAYLOAD_EXCLUSION_REASON,
     });
     orderedExcluded = [...excluded].sort((a, b) => a.index - b.index);
-    payload = formatAdditionalContext(question, included, orderedExcluded);
+    payload = formatAdditionalContext(undefined, included, orderedExcluded);
   }
 
   return {
@@ -275,37 +264,11 @@ export async function copyFilesWithQuestion(
       (file): file is Extract<typeof file, { kind: "excluded" }> =>
         file.kind === "excluded"
     );
-    const initial = fitPayload(undefined, files, excludedFiles);
+    const initial = fitPayload(files, excludedFiles);
 
     const count = validated.length;
     await deps.writeClipboard(initial.payload);
     deps.showInformationMessage(copyResultMessage(count, initial.excludedCount));
-
-    const question = await deps.showInputBox({
-      title:
-        count === 1
-          ? `Copied ${path.basename(validated[0].relativePath)} with AI Badger`
-          : `Copied ${count} files with AI Badger`,
-      prompt: COPY_FILES_INPUT_PROMPT,
-      placeHolder: COPY_FILES_INPUT_PLACEHOLDER,
-      value: "",
-    });
-    const trimmedQuestion = question?.trim() ?? "";
-    if (trimmedQuestion === "") {
-      return;
-    }
-
-    const withQuestion = fitPayload(trimmedQuestion, files, excludedFiles);
-    await deps.writeClipboard(withQuestion.payload);
-    deps.showInformationMessage(
-      withQuestion.excludedCount === 0
-        ? count === 1
-          ? "Copied the question and 1 file to the clipboard."
-          : `Copied the question and ${count} files to the clipboard.`
-        : `Copied the question and selected file context. ${withQuestion.excludedCount} ${
-            withQuestion.excludedCount === 1 ? "file was" : "files were"
-          } listed but excluded by payload limits.`
-    );
   } catch (error) {
     deps.showErrorMessage(
       error instanceof Error ? error.message : UNSUPPORTED_SELECTION_MESSAGE

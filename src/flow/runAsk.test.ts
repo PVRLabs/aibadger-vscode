@@ -534,7 +534,7 @@ suite("runAsk step 2 copy-requested-files + done panel", () => {
     assert.strictEqual(START_AGAIN_LABEL, "Start again");
     assert.strictEqual(
       PROMPT2_COPIED_MESSAGE,
-      "Final handoff prompt copied. Paste it into the same AI chat to complete the handoff and continue the conversation."
+      "✓ Requested code copied. Paste it into the same AI chat to continue."
     );
   });
 

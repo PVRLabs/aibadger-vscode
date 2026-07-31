@@ -1,7 +1,5 @@
 import * as assert from "assert";
 import {
-  COPY_FILES_INPUT_PLACEHOLDER,
-  COPY_FILES_INPUT_PROMPT,
   CROSS_WORKSPACE_MESSAGE,
   MAX_COPY_FILE_BYTES,
   MAX_COPY_PAYLOAD_BYTES,
@@ -32,24 +30,16 @@ function uri(
 
 type Harness = {
   deps: CopyFilesDeps;
-  inputOptions: Array<{
-    title: string;
-    prompt: string;
-    placeHolder: string;
-    value: string;
-  }>;
   clipboard: string[];
   infos: string[];
   errors: string[];
   reads: string[];
-  setQuestion(value: string | undefined): void;
   setActive(value: TestUri | undefined): void;
   setFolder(value: TestUri): void;
   setContents(value: TestUri, contents: Uint8Array | string): void;
 };
 
 function createHarness(): Harness {
-  const inputOptions: Harness["inputOptions"] = [];
   const clipboard: string[] = [];
   const infos: string[] = [];
   const errors: string[] = [];
@@ -57,7 +47,6 @@ function createHarness(): Harness {
   const folders = new Map<string, boolean>();
   const contents = new Map<string, Uint8Array>();
   const openDocuments = new Map<string, string>();
-  let question: string | undefined = "";
   let active: TestUri | undefined;
 
   const deps: CopyFilesDeps = {
@@ -75,10 +64,6 @@ function createHarness(): Harness {
       reads.push(value.toString());
       return contents.get(value.toString()) ?? new TextEncoder().encode("disk");
     },
-    showInputBox: async (options) => {
-      inputOptions.push(options);
-      return question;
-    },
     writeClipboard: async (text) => {
       clipboard.push(text);
     },
@@ -88,14 +73,10 @@ function createHarness(): Harness {
 
   return {
     deps,
-    inputOptions,
     clipboard,
     infos,
     errors,
     reads,
-    setQuestion(value) {
-      question = value;
-    },
     setActive(value) {
       active = value;
     },
@@ -145,50 +126,26 @@ suite("copyFilesWithQuestion", () => {
     assert.ok(harness.clipboard[0].includes("src/active.ts"));
   });
 
-  test("copies first, then shows an actionable single-file input", async () => {
+  test("copies one open file and finishes without another interaction", async () => {
     const harness = createHarness();
     const file = uri("src/extension.ts");
     harness.setContents(file, "unsaved");
     await copyFilesWithQuestion(file, [file], harness.deps);
-    assert.deepStrictEqual(harness.inputOptions, [
-      {
-        title: "Copied extension.ts with AI Badger",
-        prompt: COPY_FILES_INPUT_PROMPT,
-        placeHolder: COPY_FILES_INPUT_PLACEHOLDER,
-        value: "",
-      },
-    ]);
-    assert.strictEqual(harness.infos[0], copySuccessMessage(1));
+    assert.deepStrictEqual(harness.infos, [copySuccessMessage(1)]);
+    assert.strictEqual(harness.clipboard.length, 1);
     assert.ok(harness.clipboard[0].includes("unsaved"));
     assert.strictEqual(harness.reads.length, 0);
   });
 
-  test("copies multiple files first, then copies again with a question", async () => {
+  test("copies multiple files once in selection order", async () => {
     const harness = createHarness();
     const a = uri("src/a.ts");
     const b = uri("src/b.ts");
-    harness.setQuestion("How?");
     await copyFilesWithQuestion(b, [b, a], harness.deps);
-    assert.strictEqual(harness.inputOptions[0].title, "Copied 2 files with AI Badger");
-    assert.strictEqual(harness.clipboard.length, 2);
+    assert.strictEqual(harness.clipboard.length, 1);
     assert.ok(harness.clipboard[0].indexOf("src/b.ts") < harness.clipboard[0].indexOf("src/a.ts"));
     assert.ok(!harness.clipboard[0].includes("[QUESTION]"));
-    assert.ok(harness.clipboard[1].startsWith("[QUESTION]\nHow?\n"));
-    assert.strictEqual(harness.infos[0], copySuccessMessage(2));
-    assert.strictEqual(
-      harness.infos[1],
-      "Copied the question and 2 files to the clipboard."
-    );
-  });
-
-  test("cancellation keeps the initial file-only copy", async () => {
-    const harness = createHarness();
-    harness.setQuestion(undefined);
-    await copyFilesWithQuestion(uri("a.ts"), undefined, harness.deps);
-    assert.strictEqual(harness.clipboard.length, 1);
-    assert.ok(!harness.clipboard[0].includes("[QUESTION]"));
-    assert.strictEqual(harness.reads.length, 1);
-    assert.deepStrictEqual(harness.infos, [copySuccessMessage(1)]);
+    assert.deepStrictEqual(harness.infos, [copySuccessMessage(2)]);
   });
 
   test("rejects files from different workspace folders", async () => {
@@ -197,7 +154,6 @@ suite("copyFilesWithQuestion", () => {
     const b = uri("b.ts", "beta");
     await copyFilesWithQuestion(a, [a, b], harness.deps);
     assert.deepStrictEqual(harness.errors, [CROSS_WORKSPACE_MESSAGE]);
-    assert.deepStrictEqual(harness.inputOptions, []);
   });
 
   test("rejects folders", async () => {

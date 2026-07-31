@@ -141,12 +141,6 @@ function renderCompletionNextSteps(): void {
     description.textContent = ` ${step.description}`;
 
     content.append(title, description);
-    if (step.comingSoon) {
-      const badge = document.createElement("span");
-      badge.className = "coming-soon-badge";
-      badge.textContent = "Coming soon";
-      content.append(badge);
-    }
 
     item.append(marker, content);
     nextStepsList.appendChild(item);

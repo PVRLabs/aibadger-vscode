@@ -117,6 +117,30 @@ suite("resolveScmSelection", () => {
     );
   });
 
+  test("allows a marked deleted SCM resource to resolve after it leaves disk", async () => {
+    const result = await resolveScmSelection({
+      ...resource("/repo/deleted.ts"),
+      isDeleted: true,
+    }, undefined, {
+      ...deps,
+      stat: async () => { throw { code: "ENOENT" }; },
+    });
+    assert.equal(result.ok, true);
+    if (result.ok) {
+      assert.deepEqual(result.value.files.map((file) => file.relativePath), ["deleted.ts"]);
+      assert.equal(result.value.files[0].isDeleted, true);
+    }
+  });
+
+  test("does not preserve stale deleted metadata when the file exists", async () => {
+    const result = await resolveScmSelection({
+      ...resource("/repo/recreated.ts"),
+      isDeleted: true,
+    }, undefined, deps);
+    assert.equal(result.ok, true);
+    if (result.ok) assert.equal(result.value.files[0].isDeleted, undefined);
+  });
+
   test("normalizes Windows separators before validating traversal", async () => {
     const result = await resolveScmSelection(resource("/repo/a.ts"), undefined, {
       ...deps,

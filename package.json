@@ -140,7 +140,7 @@
     "compile": "tsc -p ./ && node ./scripts/copy-webview-assets.mjs",
     "watch": "node ./scripts/watch.mjs",
     "lint": "eslint src --ext ts --cache --cache-location out/.eslintcache",
-    "test:unit:run": "mocha 'out/{scope,flow,client,context,selection,git}/**/*.test.js' --ui tdd --timeout 5000",
+    "test:unit:run": "mocha 'out/{scope,flow,client,context,selection,git,review}/**/*.test.js' --ui tdd --timeout 5000",
     "test:unit": "npm run compile && npm run test:unit:run",
     "verify": "npm run compile && npm run lint && npm run test:unit:run",
     "package:contents": "vsce ls",

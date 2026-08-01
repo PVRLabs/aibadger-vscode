@@ -6,6 +6,8 @@ export type ScmUri = {
 
 export type ScmResource = {
   resourceUri: ScmUri;
+  /** VS Code SCM decoration can identify a deleted path after it leaves disk. */
+  isDeleted?: boolean;
 };
 
 export type ScmSelectionError =
@@ -21,6 +23,7 @@ export type ScmSelectionError =
 export type ResolvedScmFile = {
   uri: ScmUri;
   relativePath: string;
+  isDeleted?: boolean;
 };
 
 export type ResolvedScmSelection = {
@@ -108,16 +111,31 @@ export async function resolveScmSelection(
   const files: ResolvedScmFile[] = [];
   let repositoryRoot: string | undefined;
   const seenPaths = new Set<string>();
+  const deletedUris = new Set(
+    [clicked, ...(selected ?? [])]
+      .filter((resource): resource is ScmResource => Boolean(resource?.isDeleted))
+      .map((resource) => uriKey(resource.resourceUri))
+  );
   for (const uri of normalized.uris) {
     let fileStat: { isFile: boolean };
+    let resolvedAsDeleted = false;
     try {
       fileStat = await deps.stat(uri);
     } catch (error) {
       const code = (error as { code?: string }).code;
-      return {
-        ok: false,
-        reason: code === "ENOENT" || code === "FileNotFound" ? "missing-file" : "stat-failed",
-      };
+      if (code === "ENOENT" || code === "FileNotFound") {
+        if (deletedUris.has(uriKey(uri))) {
+          // A deleted SCM resource is intentionally allowed to reach Git. Git
+          // is authoritative for its deletion patch and the path is still
+          // available through resourceUri.
+          fileStat = { isFile: true };
+          resolvedAsDeleted = true;
+        } else {
+          return { ok: false, reason: "missing-file" };
+        }
+      } else {
+        return { ok: false, reason: "stat-failed" };
+      }
     }
     if (!fileStat.isFile) {
       return { ok: false, reason: "folder" };
@@ -136,7 +154,7 @@ export async function resolveScmSelection(
     }
     if (!seenPaths.has(relativePath)) {
       seenPaths.add(relativePath);
-      files.push({ uri, relativePath });
+      files.push({ uri, relativePath, ...(resolvedAsDeleted ? { isDeleted: true } : {}) });
     }
   }
 

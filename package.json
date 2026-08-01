@@ -61,6 +61,10 @@
       {
         "command": "aiBadger.copyFilesWithQuestion",
         "title": "AI Badger: Copy Selected Files for AI"
+      },
+      {
+        "command": "aiBadger.reviewSelectedChanges",
+        "title": "AI Badger: Review Selected Changes"
       }
     ],
     "menus": {
@@ -98,6 +102,13 @@
           "group": "navigation@90"
         }
       ],
+      "scm/resourceState/context": [
+        {
+          "command": "aiBadger.reviewSelectedChanges",
+          "when": "scmProvider == git && resourceScheme == file",
+          "group": "navigation@90"
+        }
+      ],
       "editor/title/context": [
         {
           "command": "aiBadger.askAboutFile",
@@ -111,6 +122,10 @@
         }
       ],
       "commandPalette": [
+        {
+          "command": "aiBadger.reviewSelectedChanges",
+          "when": "false"
+        },
         {
           "command": "aiBadger.askAboutProject"
         },

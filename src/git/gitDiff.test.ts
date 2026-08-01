@@ -1,17 +1,29 @@
 import * as assert from "node:assert/strict";
 import { execFileSync } from "node:child_process";
-import { mkdtempSync, readFileSync, rmSync, writeFileSync } from "node:fs";
+import { mkdirSync, mkdtempSync, readFileSync, realpathSync, rmSync, writeFileSync } from "node:fs";
 import { tmpdir } from "node:os";
 import { join } from "node:path";
 import {
   buildTrackedDiffArgv,
+  buildGitStatusMetadataArgv,
   buildUnbornRepositoryDiffArgv,
   buildUntrackedDiffArgv,
   generateSelectedGitDiff,
+  getSelectedGitChangeMetadata,
   NO_INDEX_DIFF_EXIT_CODE,
+  resolveGitRepositoryRoot,
 } from "./gitDiff";
 
 suite("Git selected diff contract", () => {
+  test("uses deterministic repository-wide status metadata arguments", () => {
+    assert.deepStrictEqual(buildGitStatusMetadataArgv(), [
+      "status",
+      "--porcelain=v1",
+      "-z",
+      "--untracked-files=all",
+      "--renames",
+    ]);
+  });
   test("compares tracked selections with HEAD and includes staged plus unstaged edits", () => {
     assert.deepStrictEqual(buildTrackedDiffArgv(["space name/file.ts", "deleted.ts"]), [
       "diff",
@@ -238,6 +250,163 @@ suite("Git selected diff contract", () => {
       if (result.ok) {
         assert.match(result.patch, /\+new/);
       }
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("classifies a selected rename destination and expands only that pair", async () => {
+    const root = mkdtempSync(join(tmpdir(), "ai-badger-git-rename-metadata-"));
+    const run = (args: string[]) =>
+      execFileSync("git", args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+    try {
+      run(["init", "-q"]);
+      run(["config", "user.email", "tests@example.invalid"]);
+      run(["config", "user.name", "AI Badger tests"]);
+      writeFileSync(join(root, "old name.ts"), "before\nline two\nline three\n");
+      writeFileSync(join(root, "unrelated old.ts"), "unrelated\n");
+      run(["add", "."]);
+      run(["commit", "-qm", "initial"]);
+      run(["mv", "old name.ts", "new name.ts"]);
+      writeFileSync(join(root, "new name.ts"), "before\nline two\nline three\nafter rename\n");
+      run(["mv", "unrelated old.ts", "unrelated new.ts"]);
+
+      const metadata = await getSelectedGitChangeMetadata(root, ["new name.ts"]);
+      assert.equal(metadata.ok, true);
+      if (!metadata.ok) return;
+      const rename = metadata.changes.get("new name.ts");
+      assert.deepEqual(rename, {
+        selectedPath: "new name.ts",
+        changeKind: "renamed",
+        renameSourcePath: "old name.ts",
+        diffPaths: ["old name.ts", "new name.ts"],
+      });
+      const diff = await generateSelectedGitDiff(root, rename!.diffPaths);
+      assert.equal(diff.ok, true);
+      if (!diff.ok) return;
+      assert.match(diff.patch, /rename from old name\.ts/);
+      assert.match(diff.patch, /rename to new name\.ts/);
+      assert.match(diff.patch, /\+after rename/);
+      assert.doesNotMatch(diff.patch, /unrelated new\.ts/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("resolves a deleted path after its parent directories are removed", async () => {
+    const root = mkdtempSync(join(tmpdir(), "ai-badger-git-deleted-parent-"));
+    const run = (args: string[]) =>
+      execFileSync("git", args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+    try {
+      run(["init", "-q"]);
+      run(["config", "user.email", "tests@example.invalid"]);
+      run(["config", "user.name", "AI Badger tests"]);
+      mkdirSync(join(root, "removed/subdir"), { recursive: true });
+      writeFileSync(join(root, "removed/subdir/deleted.ts"), "gone\n");
+      run(["add", "."]);
+      run(["commit", "-qm", "initial"]);
+      rmSync(join(root, "removed"), { recursive: true, force: true });
+
+      const deletedPath = join(root, "removed/subdir/deleted.ts");
+      assert.equal(await resolveGitRepositoryRoot(deletedPath), realpathSync(root));
+      const diff = await generateSelectedGitDiff(root, ["removed/subdir/deleted.ts"]);
+      assert.equal(diff.ok, true);
+      if (diff.ok) assert.match(diff.patch, /deleted file mode/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("continues past a replaced directory when resolving a deleted path", async () => {
+    const root = mkdtempSync(join(tmpdir(), "ai-badger-git-replaced-directory-"));
+    const run = (args: string[]) =>
+      execFileSync("git", args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+    try {
+      run(["init", "-q"]);
+      run(["config", "user.email", "tests@example.invalid"]);
+      run(["config", "user.name", "AI Badger tests"]);
+      mkdirSync(join(root, "removed/subdir"), { recursive: true });
+      writeFileSync(join(root, "removed/subdir/file.ts"), "gone\n");
+      run(["add", "."]);
+      run(["commit", "-qm", "initial"]);
+      rmSync(join(root, "removed"), { recursive: true, force: true });
+      writeFileSync(join(root, "removed"), "replacement\n");
+
+      const deletedPath = join(root, "removed/subdir/file.ts");
+      assert.equal(await resolveGitRepositoryRoot(deletedPath), realpathSync(root));
+      const diff = await generateSelectedGitDiff(root, ["removed/subdir/file.ts"]);
+      assert.equal(diff.ok, true);
+      if (diff.ok) assert.match(diff.patch, /deleted file mode/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("enumerates a nested untracked file and keeps unrelated metadata out", async () => {
+    const root = mkdtempSync(join(tmpdir(), "ai-badger-git-untracked-metadata-"));
+    const run = (args: string[]) =>
+      execFileSync("git", args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+    try {
+      run(["init", "-q"]);
+      run(["config", "user.email", "tests@example.invalid"]);
+      run(["config", "user.name", "AI Badger tests"]);
+      writeFileSync(join(root, "tracked.ts"), "tracked\n");
+      run(["add", "."]);
+      run(["commit", "-qm", "initial"]);
+      mkdirSync(join(root, "new-directory/nested"), { recursive: true });
+      writeFileSync(join(root, "new-directory/nested/new.ts"), "new file\n");
+      writeFileSync(join(root, "unrelated.ts"), "unrelated\n");
+
+      const metadata = await getSelectedGitChangeMetadata(root, ["new-directory/nested/new.ts"]);
+      assert.equal(metadata.ok, true);
+      if (!metadata.ok) return;
+      assert.deepEqual([...metadata.changes.keys()], ["new-directory/nested/new.ts"]);
+      assert.deepEqual(metadata.changes.get("new-directory/nested/new.ts"), {
+        selectedPath: "new-directory/nested/new.ts",
+        changeKind: "untracked",
+        diffPaths: ["new-directory/nested/new.ts"],
+      });
+      const diff = await generateSelectedGitDiff(root, ["new-directory/nested/new.ts"]);
+      assert.equal(diff.ok, true);
+      if (!diff.ok) return;
+      assert.match(diff.patch, /--- \/dev\/null/);
+      assert.match(diff.patch, /\+new file/);
+      assert.doesNotMatch(diff.patch, /unrelated\.ts/);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
+  test("detects renames even when status.renames is disabled", async () => {
+    const root = mkdtempSync(join(tmpdir(), "ai-badger-git-rename-config-"));
+    const run = (args: string[]) =>
+      execFileSync("git", args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+    try {
+      run(["init", "-q"]);
+      run(["config", "user.email", "tests@example.invalid"]);
+      run(["config", "user.name", "AI Badger tests"]);
+      writeFileSync(join(root, "old.ts"), "one\ntwo\nthree\n");
+      writeFileSync(join(root, "unrelated old.ts"), "unrelated\none\ntwo\n");
+      run(["add", "."]);
+      run(["commit", "-qm", "initial"]);
+      run(["mv", "old.ts", "new.ts"]);
+      writeFileSync(join(root, "new.ts"), "one\ntwo\nthree\nchanged\n");
+      run(["mv", "unrelated old.ts", "unrelated new.ts"]);
+      run(["config", "status.renames", "false"]);
+
+      const metadata = await getSelectedGitChangeMetadata(root, ["new.ts"]);
+      assert.equal(metadata.ok, true);
+      if (!metadata.ok) return;
+      const rename = metadata.changes.get("new.ts");
+      assert.equal(rename?.changeKind, "renamed");
+      assert.equal(rename?.renameSourcePath, "old.ts");
+      assert.deepEqual(rename?.diffPaths, ["old.ts", "new.ts"]);
+      const diff = await generateSelectedGitDiff(root, rename!.diffPaths);
+      assert.equal(diff.ok, true);
+      if (!diff.ok) return;
+      assert.match(diff.patch, /rename from old\.ts/);
+      assert.match(diff.patch, /rename to new\.ts/);
+      assert.doesNotMatch(diff.patch, /unrelated new\.ts/);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

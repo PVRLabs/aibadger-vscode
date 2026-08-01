@@ -38,8 +38,13 @@ export type ScmSelectionResult =
 export type ScmSelectionDeps = {
   stat(uri: ScmUri): Promise<{ isFile: boolean }>;
   getRepositoryRoot(uri: ScmUri): Promise<string | undefined>;
-  getRelativePath(uri: ScmUri, repositoryRoot: string): string;
+  getRelativePath(uri: ScmUri, repositoryRoot: string): string | Promise<string>;
 };
+
+function isMissingPathError(code: string | undefined): boolean {
+  return code === "ENOENT" || code === "FileNotFound" ||
+    code === "ENOTDIR" || code === "FileNotADirectory";
+}
 
 function uriKey(uri: ScmUri): string {
   return uri.toString();
@@ -123,7 +128,7 @@ export async function resolveScmSelection(
       fileStat = await deps.stat(uri);
     } catch (error) {
       const code = (error as { code?: string }).code;
-      if (code === "ENOENT" || code === "FileNotFound") {
+      if (isMissingPathError(code)) {
         if (deletedUris.has(uriKey(uri))) {
           // A deleted SCM resource is intentionally allowed to reach Git. Git
           // is authoritative for its deletion patch and the path is still
@@ -148,7 +153,7 @@ export async function resolveScmSelection(
       return { ok: false, reason: "cross-repository" };
     }
     repositoryRoot = root;
-    const relativePath = normalizeRelativePath(deps.getRelativePath(uri, root));
+    const relativePath = normalizeRelativePath(await deps.getRelativePath(uri, root));
     if (!relativePath) {
       return { ok: false, reason: "invalid-path" };
     }

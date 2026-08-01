@@ -19,6 +19,11 @@ import { runAsk } from "./flow/runAsk";
 import { resolveAskFileSelection } from "./flow/askSelection";
 import { createVscodeRunAskUi } from "./flow/vscodeUi";
 import { createVscodeResolveDeps } from "./scope/vscodeDeps";
+import {
+  createReviewSelectedChangesSelectionDeps,
+  reviewSelectedChanges,
+  REVIEW_SELECTED_CHANGES_COMMAND,
+} from "./context/reviewSelectedChanges";
 
 const INSTALLATION_INSTRUCTIONS_URL =
   "https://github.com/PVRLabs/aibadger/blob/main/docs/install.md";
@@ -61,6 +66,7 @@ export function activate(
       : {}),
   };
   const copyFilesDeps = createVscodeCopyFilesDeps();
+  const reviewSelectionDeps = createReviewSelectedChangesSelectionDeps(vscode);
   const copySelectedFiles = async (
     uri?: vscode.Uri,
     selectedUris?: vscode.Uri[]
@@ -118,6 +124,26 @@ export function activate(
     vscode.commands.registerCommand(
       COPY_FILES_COMMAND,
       copySelectedFiles
+    ),
+    vscode.commands.registerCommand(
+      REVIEW_SELECTED_CHANGES_COMMAND,
+      async (
+        resource?: vscode.SourceControlResourceState,
+        selectedResources?: vscode.SourceControlResourceState[]
+      ) => {
+        await reviewSelectedChanges(resource, selectedResources, {
+          selection: reviewSelectionDeps,
+          writeClipboard: async (text) => {
+            await vscode.env.clipboard.writeText(text);
+          },
+          showInformationMessage: (message) => {
+            void vscode.window.showInformationMessage(message);
+          },
+          showErrorMessage: (message) => {
+            void vscode.window.showErrorMessage(message);
+          },
+        });
+      }
     )
   );
 }

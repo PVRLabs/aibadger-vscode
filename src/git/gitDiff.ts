@@ -1,4 +1,7 @@
 import { spawn as nodeSpawn, type ChildProcess } from "node:child_process";
+import * as path from "node:path";
+import { realpath, stat } from "node:fs/promises";
+import type { ReviewChangeKind } from "../review/reviewPayload";
 
 /** Git diff contract for selected SCM files. */
 function literalPathspec(path: string): string {
@@ -42,6 +45,21 @@ export type GitDiffDeps = {
   spawn?: typeof nodeSpawn;
 };
 
+export type GitChangeMetadata = {
+  selectedPath: string;
+  changeKind: ReviewChangeKind;
+  renameSourcePath?: string;
+  diffPaths: string[];
+};
+
+export type GitStatusResult =
+  | { ok: true; changes: Map<string, GitChangeMetadata> }
+  | { ok: false; reason: "git-unavailable" | "git-failed"; detail?: string };
+
+export function buildGitStatusMetadataArgv(): string[] {
+  return ["status", "--porcelain=v1", "-z", "--untracked-files=all", "--renames"];
+}
+
 function runGit(
   repositoryRoot: string,
   argv: readonly string[],
@@ -75,6 +93,100 @@ function runGit(
 
 function joinPatches(patches: readonly string[]): string {
   return patches.filter((patch) => patch.length > 0).map((patch) => patch.endsWith("\n") ? patch : `${patch}\n`).join("");
+}
+
+type ExistingDirectory = {
+  originalPath: string;
+  physicalPath: string;
+};
+
+async function findNearestExistingDirectory(filePath: string): Promise<ExistingDirectory | undefined> {
+  let directory = path.dirname(filePath);
+  for (;;) {
+    try {
+      const info = await stat(directory);
+      if (info.isDirectory()) {
+        return { originalPath: directory, physicalPath: await realpath(directory) };
+      }
+    } catch {
+      // Continue through missing or inaccessible ancestors. The filesystem
+      // root terminates the search safely below.
+    }
+    const parent = path.dirname(directory);
+    if (parent === directory) return undefined;
+    directory = parent;
+  }
+}
+
+/** Canonicalize a selected path without resolving the selected file itself. */
+export async function canonicalizeSelectedPath(filePath: string): Promise<string | undefined> {
+  const existing = await findNearestExistingDirectory(filePath);
+  if (!existing) return undefined;
+  return path.join(existing.physicalPath, path.relative(existing.originalPath, filePath));
+}
+
+/** Resolve the Git worktree containing a selected file without invoking a shell. */
+export async function resolveGitRepositoryRoot(
+  filePath: string,
+  deps: GitDiffDeps = {}
+): Promise<string | undefined> {
+  const existing = await findNearestExistingDirectory(filePath);
+  if (!existing) return undefined;
+  const result = await runGit(
+    existing.physicalPath,
+    ["rev-parse", "--show-toplevel"],
+    deps.spawn ?? nodeSpawn
+  );
+  return result.code === 0 ? result.stdout.trim() || undefined : undefined;
+}
+
+/**
+ * Read repository-wide Git status metadata, then retain only selected current
+ * paths. Rename records retain their source internally so the selected
+ * destination can produce a complete rename diff without adding a second
+ * payload file.
+ */
+export async function getSelectedGitChangeMetadata(
+  repositoryRoot: string,
+  paths: readonly string[],
+  deps: GitDiffDeps = {}
+): Promise<GitStatusResult> {
+  const result = await runGit(
+    repositoryRoot,
+    buildGitStatusMetadataArgv(),
+    deps.spawn ?? nodeSpawn
+  );
+  if (result.code === null) return { ok: false, reason: "git-unavailable", detail: result.stderr };
+  if (result.code !== 0) return { ok: false, reason: "git-failed", detail: result.stderr };
+
+  const selected = new Set(paths);
+  const changes = new Map<string, GitChangeMetadata>();
+  const records = result.stdout.split("\0");
+  for (let index = 0; index < records.length; index += 1) {
+    const record = records[index];
+    if (!record || record.length < 4) continue;
+    const status = record.slice(0, 2);
+    const currentPath = record.slice(3);
+    const isRename = status.includes("R") || status.includes("C");
+    const sourcePath = isRename ? records[++index] : undefined;
+    if (!selected.has(currentPath)) continue;
+    const kind: ReviewChangeKind = status === "??"
+      ? "untracked"
+      : status.includes("D")
+        ? "deleted"
+        : status.includes("A")
+          ? "tracked-added"
+          : status.includes("R")
+            ? "renamed"
+            : "modified";
+    changes.set(currentPath, {
+      selectedPath: currentPath,
+      changeKind: kind,
+      ...(isRename && sourcePath ? { renameSourcePath: sourcePath } : {}),
+      diffPaths: isRename && sourcePath ? [sourcePath, currentPath] : [currentPath],
+    });
+  }
+  return { ok: true, changes };
 }
 
 /** Generate only the selected files' Git patch, without extension-added prose. */

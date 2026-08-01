@@ -2,6 +2,10 @@
 
 All notable changes to the AI Badger VS Code extension are documented here.
 
+## Unreleased
+
+- Added **AI Badger: Review Selected Changes** to Git Source Control file context menus. It copies a CLI-free, selected-file code-review request with the complete Git diff and policy-approved optional full-file context (256 KiB total, 32 KiB per file).
+
 ## [0.0.3] - 2026-07-30
 
 - Made direct file copying an immediate, CLI-free action with no follow-up question dialog.

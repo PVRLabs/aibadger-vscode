@@ -68,6 +68,17 @@ suite("reviewSelectedChanges", () => {
     assert.deepEqual(harness.errors, []);
   });
 
+  test("ignores a non-array SCM contextual argument and uses the clicked resource", async () => {
+    const harness = deps();
+    await reviewSelectedChanges(
+      resource("/repo/a.ts"),
+      { unexpected: "SCM context" },
+      harness.base
+    );
+    assert.deepEqual(harness.copied, ["selected diff:a.ts"]);
+    assert.deepEqual(harness.errors, []);
+  });
+
   test("preserves supplied multi-selection order and uses plural wording", async () => {
     const harness = deps();
     await reviewSelectedChanges(
@@ -87,6 +98,19 @@ suite("reviewSelectedChanges", () => {
     assert.deepEqual(harness.copied, []);
     assert.deepEqual(harness.info, []);
     assert.deepEqual(harness.errors, ["The selected files have no current Git changes."]);
+  });
+
+  test("reports unexpected preparation failures without attempting the clipboard", async () => {
+    const harness = deps({
+      selection: {
+        stat: async () => ({ isFile: true }),
+        getRepositoryRoot: async () => { throw new Error("unexpected repository failure"); },
+        getRelativePath: () => "a.ts",
+      },
+    });
+    await reviewSelectedChanges(resource("/repo/a.ts"), undefined, harness.base);
+    assert.deepEqual(harness.copied, []);
+    assert.deepEqual(harness.errors, ["Could not prepare selected changes for review (selection)."]);
   });
 
   test("does not write the clipboard when the mandatory payload is too large", async () => {

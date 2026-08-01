@@ -75,63 +75,73 @@ function statusFailure(result: { reason: "git-unavailable" | "git-failed" }): st
 
 export async function reviewSelectedChanges(
   clicked: vscode.SourceControlResourceState | undefined,
-  selected: readonly vscode.SourceControlResourceState[] | undefined,
+  selected: unknown,
   deps: ReviewSelectedChangesDeps
 ): Promise<void> {
-  const clickedResource = asScmResource(clicked);
-  const selectedResources = selected?.map(asScmResource).filter(
-    (resource): resource is ReviewScmResource => resource !== undefined
-  );
-  const resolved = await resolveScmSelection(clickedResource, selectedResources, deps.selection);
-  if (!resolved.ok) {
-    deps.showErrorMessage(errorMessage(resolved.reason));
-    return;
-  }
-
-  const selectedPaths = resolved.value.files.map((file) => file.relativePath);
-  const getChangeMetadata = deps.getChangeMetadata ?? getSelectedGitChangeMetadata;
-  const metadata = await getChangeMetadata(
-    resolved.value.repositoryRoot,
-    selectedPaths,
-    deps.git
-  );
-  if (!metadata.ok) {
-    deps.showErrorMessage(statusFailure(metadata));
-    return;
-  }
-
-  const diffPaths = resolved.value.files.flatMap((file) =>
-    metadata.changes.get(file.relativePath)?.diffPaths ?? [file.relativePath]
-  );
-  const generateDiff = deps.generateDiff ?? generateSelectedGitDiff;
-  const diff = await generateDiff(resolved.value.repositoryRoot, diffPaths, deps.git);
-  if (!diff.ok) {
-    deps.showErrorMessage(errorMessage(diff.reason));
-    return;
-  }
-
-  const files: ReviewPayloadFile[] = resolved.value.files.map((file) => ({
-    uri: file.uri,
-    relativePath: file.relativePath,
-    isDeleted: file.isDeleted,
-    changeKind: metadata.changes.get(file.relativePath)?.changeKind as ReviewChangeKind | undefined,
-  }));
-  const buildPayload = deps.buildPayload ?? buildReviewPayload;
-  const payload: ReviewPayloadResult = await buildPayload(diff.patch, files);
-  if (!payload.ok) {
-    deps.showErrorMessage(
-      "The selected review request is too large to copy. Select fewer files and try again."
-    );
-    return;
-  }
-
+  let stage = "selection";
   try {
-    await deps.writeClipboard(payload.payload);
+    const clickedResource = asScmResource(clicked);
+    const selectedResources = Array.isArray(selected)
+      ? selected.map(asScmResource).filter(
+          (resource): resource is ReviewScmResource => resource !== undefined
+        )
+      : undefined;
+    const resolved = await resolveScmSelection(clickedResource, selectedResources, deps.selection);
+    if (!resolved.ok) {
+      deps.showErrorMessage(errorMessage(resolved.reason));
+      return;
+    }
+
+    const selectedPaths = resolved.value.files.map((file) => file.relativePath);
+    stage = "Git status";
+    const getChangeMetadata = deps.getChangeMetadata ?? getSelectedGitChangeMetadata;
+    const metadata = await getChangeMetadata(
+      resolved.value.repositoryRoot,
+      selectedPaths,
+      deps.git
+    );
+    if (!metadata.ok) {
+      deps.showErrorMessage(statusFailure(metadata));
+      return;
+    }
+
+    const diffPaths = resolved.value.files.flatMap((file) =>
+      metadata.changes.get(file.relativePath)?.diffPaths ?? [file.relativePath]
+    );
+    stage = "Git diff";
+    const generateDiff = deps.generateDiff ?? generateSelectedGitDiff;
+    const diff = await generateDiff(resolved.value.repositoryRoot, diffPaths, deps.git);
+    if (!diff.ok) {
+      deps.showErrorMessage(errorMessage(diff.reason));
+      return;
+    }
+
+    const files: ReviewPayloadFile[] = resolved.value.files.map((file) => ({
+      uri: file.uri,
+      relativePath: file.relativePath,
+      isDeleted: file.isDeleted,
+      changeKind: metadata.changes.get(file.relativePath)?.changeKind as ReviewChangeKind | undefined,
+    }));
+    stage = "review payload";
+    const buildPayload = deps.buildPayload ?? buildReviewPayload;
+    const payload: ReviewPayloadResult = await buildPayload(diff.patch, files);
+    if (!payload.ok) {
+      deps.showErrorMessage(
+        "The selected review request is too large to copy. Select fewer files and try again."
+      );
+      return;
+    }
+
+    try {
+      await deps.writeClipboard(payload.payload);
+    } catch {
+      deps.showErrorMessage("Could not write the review request to the clipboard.");
+      return;
+    }
+    deps.showInformationMessage(selectedCountMessage(files.length));
   } catch {
-    deps.showErrorMessage("Could not write the review request to the clipboard.");
-    return;
+    deps.showErrorMessage(`Could not prepare selected changes for review (${stage}).`);
   }
-  deps.showInformationMessage(selectedCountMessage(files.length));
 }
 
 export function createReviewSelectedChangesSelectionDeps(

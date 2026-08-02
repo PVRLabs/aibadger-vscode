@@ -7,6 +7,7 @@ import {
   resolveGitRepositoryRoot,
   type GitDiffDeps,
 } from "../git/gitDiff";
+import { formatByteSize } from "../flow/promptSummary";
 import {
   buildReviewPayload,
   type ReviewChangeKind,
@@ -55,10 +56,12 @@ function errorMessage(reason: string): string {
   return ERROR_MESSAGES[reason] ?? "Could not prepare the selected changes for review.";
 }
 
-function selectedCountMessage(count: number): string {
+/** Concise success toast: file count, payload size, and privacy reminder. */
+export function selectedCountMessage(count: number, byteLength: number): string {
+  const size = formatByteSize(byteLength);
   return count === 1
-    ? "Copied review request for 1 selected file. Nothing is shared until you paste it."
-    : `Copied review request for ${count} selected files. Nothing is shared until you paste it.`;
+    ? `Copied review request for 1 selected file (${size}). Nothing is shared until you paste it.`
+    : `Copied review request for ${count} selected files (${size}). Nothing is shared until you paste it.`;
 }
 
 function asScmResource(resource: unknown): ReviewScmResource | undefined {
@@ -182,7 +185,9 @@ export async function reviewSelectedChanges(
       deps.showErrorMessage("Could not write the review request to the clipboard.");
       return;
     }
-    deps.showInformationMessage(selectedCountMessage(files.length));
+    deps.showInformationMessage(
+      selectedCountMessage(files.length, Buffer.byteLength(payload.payload, "utf8"))
+    );
   } catch {
     deps.showErrorMessage(`Could not prepare selected changes for review (${stage}).`);
   }

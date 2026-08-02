@@ -106,12 +106,12 @@ suite("normalizeScmCommandArgs", () => {
 });
 
 suite("reviewSelectedChanges", () => {
-  test("copies the selected payload and uses singular success wording", async () => {
+  test("copies the selected payload and uses singular success wording with size", async () => {
     const harness = deps();
     await reviewSelectedChanges([resource("/repo/a.ts")], harness.base);
     assert.deepEqual(harness.copied, ["selected diff:a.ts"]);
     assert.deepEqual(harness.info, [
-      "Copied review request for 1 selected file. Nothing is shared until you paste it.",
+      "Copied review request for 1 selected file (18 B). Nothing is shared until you paste it.",
     ]);
     assert.deepEqual(harness.errors, []);
   });
@@ -123,7 +123,7 @@ suite("reviewSelectedChanges", () => {
       harness.base
     );
     assert.deepEqual(harness.copied, ["selected diff:a.ts,b.ts,c.ts"]);
-    assert.match(harness.info[0], /3 selected files/);
+    assert.match(harness.info[0], /3 selected files \(28 B\)/);
   });
 
   test("preserves tree-view multi-selection order and uses plural wording", async () => {
@@ -133,7 +133,7 @@ suite("reviewSelectedChanges", () => {
       harness.base
     );
     assert.deepEqual(harness.copied, ["selected diff:b.ts,a.ts"]);
-    assert.match(harness.info[0], /2 selected files/);
+    assert.match(harness.info[0], /2 selected files \(23 B\)/);
   });
 
   test("does not write the clipboard when Git produces no diff", async () => {

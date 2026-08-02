@@ -127,11 +127,9 @@ export function activate(
     ),
     vscode.commands.registerCommand(
       REVIEW_SELECTED_CHANGES_COMMAND,
-      async (
-        resource?: vscode.SourceControlResourceState,
-        selectedResources?: vscode.SourceControlResourceState[]
-      ) => {
-        await reviewSelectedChanges(resource, selectedResources, {
+      // SCM multi-select supplies every selected resource as a rest argument.
+      async (...resourceStates: vscode.SourceControlResourceState[]) => {
+        await reviewSelectedChanges(resourceStates, {
           selection: reviewSelectionDeps,
           writeClipboard: async (text) => {
             await vscode.env.clipboard.writeText(text);

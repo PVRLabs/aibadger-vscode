@@ -20,8 +20,16 @@ suite("AI Badger extension shell", () => {
     assert.ok(commands.includes("aiBadger.reviewSelectedChanges"));
   });
 
-  test("Review Selected Changes is contributed only to Git SCM resources", () => {
+  test("Copy Selected Changes for Review is contributed only to Git SCM resources", () => {
     const ext = vscode.extensions.getExtension("pvrlabs.ai-badger");
+    const commands = ext?.packageJSON.contributes?.commands as
+      | Array<{ command?: string; title?: string }>
+      | undefined;
+    assert.ok(commands?.some(
+      (item) =>
+        item.command === "aiBadger.reviewSelectedChanges" &&
+        item.title === "AI Badger: Copy Selected Changes for Review"
+    ));
     const contextMenus = ext?.packageJSON.contributes?.menus?.["scm/resourceState/context"];
     assert.ok(contextMenus?.some(
       (item: { command?: string; when?: string }) =>

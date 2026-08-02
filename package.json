@@ -64,7 +64,7 @@
       },
       {
         "command": "aiBadger.reviewSelectedChanges",
-        "title": "AI Badger: Review Selected Changes"
+        "title": "AI Badger: Copy Selected Changes for Review"
       }
     ],
     "menus": {

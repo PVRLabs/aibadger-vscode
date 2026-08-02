@@ -21,6 +21,8 @@ import {
 } from "../selection/scmSelection";
 
 export const REVIEW_SELECTED_CHANGES_COMMAND = "aiBadger.reviewSelectedChanges";
+export const REVIEW_SELECTED_CHANGES_TITLE =
+  "AI Badger: Copy Selected Changes for Review";
 
 export type ReviewScmResource = ScmResource;
 
@@ -37,7 +39,7 @@ export type ReviewSelectedChangesDeps = {
 
 const ERROR_MESSAGES: Record<string, string> = {
   "no-files": "Select one or more changed Git files to review.",
-  "non-file-resource": "Review Selected Changes supports Git files only.",
+  "non-file-resource": "Copy Selected Changes for Review supports Git files only.",
   folder: "Select files, not folders, from Git Source Control.",
   "missing-file": "A selected Git file is no longer available.",
   "stat-failed": "Could not inspect the selected Git files.",
@@ -59,13 +61,60 @@ function selectedCountMessage(count: number): string {
     : `Copied review request for ${count} selected files. Nothing is shared until you paste it.`;
 }
 
-function asScmResource(
-  resource: vscode.SourceControlResourceState | undefined
-): ReviewScmResource | undefined {
-  if (!resource) return undefined;
+function asScmResource(resource: unknown): ReviewScmResource | undefined {
+  if (!resource || typeof resource !== "object") {
+    return undefined;
+  }
+  const candidate = resource as {
+    resourceUri?: ScmUri;
+    decorations?: { strikeThrough?: boolean };
+  };
+  if (!candidate.resourceUri || typeof candidate.resourceUri.fsPath !== "string") {
+    return undefined;
+  }
   return {
-    resourceUri: resource.resourceUri as unknown as ScmUri,
-    isDeleted: Boolean(resource.decorations?.strikeThrough),
+    resourceUri: candidate.resourceUri,
+    isDeleted: Boolean(candidate.decorations?.strikeThrough),
+  };
+}
+
+/**
+ * Normalize SCM context-menu command arguments.
+ *
+ * Git Source Control multi-select passes every selected resource as a rest
+ * argument (`...resourceStates`), matching the built-in `git.stage` contract.
+ * A secondary (clicked, selected[]) array form is still accepted when present.
+ */
+export function normalizeScmCommandArgs(args: readonly unknown[]): {
+  clicked: ReviewScmResource | undefined;
+  selected: ReviewScmResource[] | undefined;
+} {
+  if (args.length === 0) {
+    return { clicked: undefined, selected: undefined };
+  }
+
+  // Tree-view style used by some VS Code menus: focused item + selected array.
+  if (args.length === 2 && Array.isArray(args[1])) {
+    const clicked = asScmResource(args[0]);
+    const selected = args[1]
+      .map(asScmResource)
+      .filter((resource): resource is ReviewScmResource => resource !== undefined);
+    return {
+      clicked,
+      selected: selected.length > 0 ? selected : undefined,
+    };
+  }
+
+  // SCM resource-state context: rest arguments are the selected resources.
+  const resources = args
+    .map(asScmResource)
+    .filter((resource): resource is ReviewScmResource => resource !== undefined);
+  if (resources.length === 0) {
+    return { clicked: undefined, selected: undefined };
+  }
+  return {
+    clicked: resources[0],
+    selected: resources,
   };
 }
 
@@ -74,18 +123,13 @@ function statusFailure(result: { reason: "git-unavailable" | "git-failed" }): st
 }
 
 export async function reviewSelectedChanges(
-  clicked: vscode.SourceControlResourceState | undefined,
-  selected: unknown,
+  args: readonly unknown[],
   deps: ReviewSelectedChangesDeps
 ): Promise<void> {
   let stage = "selection";
   try {
-    const clickedResource = asScmResource(clicked);
-    const selectedResources = Array.isArray(selected)
-      ? selected.map(asScmResource).filter(
-          (resource): resource is ReviewScmResource => resource !== undefined
-        )
-      : undefined;
+    const { clicked: clickedResource, selected: selectedResources } =
+      normalizeScmCommandArgs(args);
     const resolved = await resolveScmSelection(clickedResource, selectedResources, deps.selection);
     if (!resolved.ok) {
       deps.showErrorMessage(errorMessage(resolved.reason));

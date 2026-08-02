@@ -8,6 +8,7 @@ import { generateSelectedGitDiff, getSelectedGitChangeMetadata } from "../git/gi
 import { buildReviewPayload } from "../review/reviewPayload";
 import {
   createReviewSelectedChangesSelectionDeps,
+  normalizeScmCommandArgs,
   reviewSelectedChanges,
   type ReviewSelectedChangesDeps,
 } from "./reviewSelectedChanges";
@@ -57,10 +58,57 @@ function deps(overrides: Partial<ReviewSelectedChangesDeps> = {}) {
   return { base, copied, errors, info };
 }
 
+suite("normalizeScmCommandArgs", () => {
+  test("treats rest arguments as the full SCM multi-selection", () => {
+    const a = resource("/repo/a.ts");
+    const b = resource("/repo/b.ts");
+    const c = resource("/repo/c.ts");
+    const normalized = normalizeScmCommandArgs([a, b, c]);
+    assert.equal(normalized.clicked?.resourceUri.fsPath, "/repo/a.ts");
+    assert.deepEqual(
+      normalized.selected?.map((item) => item.resourceUri.fsPath),
+      ["/repo/a.ts", "/repo/b.ts", "/repo/c.ts"]
+    );
+  });
+
+  test("does not treat a second resource as a selected-array when two files are multi-selected", () => {
+    const a = resource("/repo/a.ts");
+    const b = resource("/repo/b.ts");
+    const normalized = normalizeScmCommandArgs([a, b]);
+    assert.deepEqual(
+      normalized.selected?.map((item) => item.resourceUri.fsPath),
+      ["/repo/a.ts", "/repo/b.ts"]
+    );
+  });
+
+  test("accepts tree-view style focused item plus selected array", () => {
+    const a = resource("/repo/a.ts");
+    const b = resource("/repo/b.ts");
+    const normalized = normalizeScmCommandArgs([b, [b, a]]);
+    assert.equal(normalized.clicked?.resourceUri.fsPath, "/repo/b.ts");
+    assert.deepEqual(
+      normalized.selected?.map((item) => item.resourceUri.fsPath),
+      ["/repo/b.ts", "/repo/a.ts"]
+    );
+  });
+
+  test("ignores non-resource trailing arguments when only one resource is present", () => {
+    const normalized = normalizeScmCommandArgs([
+      resource("/repo/a.ts"),
+      { unexpected: "SCM context" },
+    ]);
+    assert.equal(normalized.clicked?.resourceUri.fsPath, "/repo/a.ts");
+    assert.deepEqual(
+      normalized.selected?.map((item) => item.resourceUri.fsPath),
+      ["/repo/a.ts"]
+    );
+  });
+});
+
 suite("reviewSelectedChanges", () => {
   test("copies the selected payload and uses singular success wording", async () => {
     const harness = deps();
-    await reviewSelectedChanges(resource("/repo/a.ts"), undefined, harness.base);
+    await reviewSelectedChanges([resource("/repo/a.ts")], harness.base);
     assert.deepEqual(harness.copied, ["selected diff:a.ts"]);
     assert.deepEqual(harness.info, [
       "Copied review request for 1 selected file. Nothing is shared until you paste it.",
@@ -68,22 +116,20 @@ suite("reviewSelectedChanges", () => {
     assert.deepEqual(harness.errors, []);
   });
 
-  test("ignores a non-array SCM contextual argument and uses the clicked resource", async () => {
+  test("copies every resource passed as SCM rest arguments", async () => {
     const harness = deps();
     await reviewSelectedChanges(
-      resource("/repo/a.ts"),
-      { unexpected: "SCM context" },
+      [resource("/repo/a.ts"), resource("/repo/b.ts"), resource("/repo/c.ts")],
       harness.base
     );
-    assert.deepEqual(harness.copied, ["selected diff:a.ts"]);
-    assert.deepEqual(harness.errors, []);
+    assert.deepEqual(harness.copied, ["selected diff:a.ts,b.ts,c.ts"]);
+    assert.match(harness.info[0], /3 selected files/);
   });
 
-  test("preserves supplied multi-selection order and uses plural wording", async () => {
+  test("preserves tree-view multi-selection order and uses plural wording", async () => {
     const harness = deps();
     await reviewSelectedChanges(
-      resource("/repo/b.ts"),
-      [resource("/repo/b.ts"), resource("/repo/a.ts")],
+      [resource("/repo/b.ts"), [resource("/repo/b.ts"), resource("/repo/a.ts")]],
       harness.base
     );
     assert.deepEqual(harness.copied, ["selected diff:b.ts,a.ts"]);
@@ -94,7 +140,7 @@ suite("reviewSelectedChanges", () => {
     const harness = deps({
       generateDiff: async () => ({ ok: false, reason: "no-diff" }),
     });
-    await reviewSelectedChanges(resource("/repo/a.ts"), undefined, harness.base);
+    await reviewSelectedChanges([resource("/repo/a.ts")], harness.base);
     assert.deepEqual(harness.copied, []);
     assert.deepEqual(harness.info, []);
     assert.deepEqual(harness.errors, ["The selected files have no current Git changes."]);
@@ -108,7 +154,7 @@ suite("reviewSelectedChanges", () => {
         getRelativePath: () => "a.ts",
       },
     });
-    await reviewSelectedChanges(resource("/repo/a.ts"), undefined, harness.base);
+    await reviewSelectedChanges([resource("/repo/a.ts")], harness.base);
     assert.deepEqual(harness.copied, []);
     assert.deepEqual(harness.errors, ["Could not prepare selected changes for review (selection)."]);
   });
@@ -117,7 +163,7 @@ suite("reviewSelectedChanges", () => {
     const harness = deps({
       buildPayload: async () => ({ ok: false, reason: "mandatory-overflow", byteLength: 300000 }),
     });
-    await reviewSelectedChanges(resource("/repo/a.ts"), undefined, harness.base);
+    await reviewSelectedChanges([resource("/repo/a.ts")], harness.base);
     assert.deepEqual(harness.copied, []);
     assert.match(harness.errors[0], /too large.*Select fewer files/);
   });
@@ -126,14 +172,14 @@ suite("reviewSelectedChanges", () => {
     const harness = deps({
       writeClipboard: async () => { throw new Error("clipboard unavailable"); },
     });
-    await reviewSelectedChanges(resource("/repo/a.ts"), undefined, harness.base);
+    await reviewSelectedChanges([resource("/repo/a.ts")], harness.base);
     assert.deepEqual(harness.info, []);
     assert.deepEqual(harness.errors, ["Could not write the review request to the clipboard."]);
   });
 
   test("maps deleted SCM decoration without invoking Badger", async () => {
     const harness = deps();
-    await reviewSelectedChanges(resource("/repo/deleted.ts", true), undefined, harness.base);
+    await reviewSelectedChanges([resource("/repo/deleted.ts", true)], harness.base);
     assert.deepEqual(harness.copied, ["selected diff:deleted.ts"]);
   });
 
@@ -163,8 +209,7 @@ suite("reviewSelectedChanges", () => {
       },
     });
     await reviewSelectedChanges(
-      resource("/repo/renamed new.ts"),
-      undefined,
+      [resource("/repo/renamed new.ts")],
       harness.base
     );
     assert.deepEqual(diffPaths, [["renamed old.ts", "renamed new.ts"]]);
@@ -204,7 +249,7 @@ suite("reviewSelectedChanges", () => {
           return { ok: true, payload: diff, includedFiles: files.map((file) => file.relativePath), statuses: [] };
         },
       });
-      await reviewSelectedChanges(resource(join(root, "new name.ts")), undefined, harness.base);
+      await reviewSelectedChanges([resource(join(root, "new name.ts"))], harness.base);
       assert.deepEqual(captured.paths, ["old name.ts", "new name.ts"]);
       assert.match(captured.diff ?? "", /rename from old name\.ts/);
       assert.match(captured.diff ?? "", /rename to new name\.ts/);
@@ -240,7 +285,7 @@ suite("reviewSelectedChanges", () => {
         generateDiff: generateSelectedGitDiff,
         buildPayload: async (diff) => ({ ok: true, payload: diff, includedFiles: [], statuses: [] }),
       });
-      await reviewSelectedChanges(resource(deleted, true), undefined, harness.base);
+      await reviewSelectedChanges([resource(deleted, true)], harness.base);
       assert.deepEqual(harness.copied.length, 1);
       assert.match(harness.copied[0], /deleted file mode/);
       assert.deepEqual(harness.errors, []);
@@ -274,7 +319,7 @@ suite("reviewSelectedChanges", () => {
         generateDiff: generateSelectedGitDiff,
         buildPayload: async (diff) => ({ ok: true, payload: diff, includedFiles: [], statuses: [] }),
       });
-      await reviewSelectedChanges(resource(deleted, true), undefined, harness.base);
+      await reviewSelectedChanges([resource(deleted, true)], harness.base);
       assert.deepEqual(harness.errors, []);
       assert.equal(harness.copied.length, 1);
       assert.match(harness.copied[0], /deleted file mode/);
@@ -307,7 +352,7 @@ suite("reviewSelectedChanges", () => {
         generateDiff: generateSelectedGitDiff,
         buildPayload: buildReviewPayload,
       });
-      await reviewSelectedChanges(resource(selectedPath), undefined, harness.base);
+      await reviewSelectedChanges([resource(selectedPath)], harness.base);
       assert.equal(harness.errors.length, 0);
       assert.equal(harness.copied.length, 1);
       assert.match(harness.copied[0], /\[REVIEW CONTEXT: SELECTED GIT DIFF\]/);

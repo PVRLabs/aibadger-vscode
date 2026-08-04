@@ -12,7 +12,6 @@ export function buildTrackedDiffArgv(paths: readonly string[]): string[] {
   return [
     "diff",
     "--no-ext-diff",
-    "--binary",
     "--full-index",
     "--find-renames",
     "HEAD",
@@ -22,7 +21,15 @@ export function buildTrackedDiffArgv(paths: readonly string[]): string[] {
 }
 
 export function buildUntrackedDiffArgv(path: string): string[] {
-  return ["diff", "--no-ext-diff", "--binary", "--full-index", "--no-index", "--", "/dev/null", path];
+  return ["diff", "--no-ext-diff", "--full-index", "--no-index", "--", "/dev/null", path];
+}
+
+function buildTrackedNumstatArgv(paths: readonly string[]): string[] {
+  return ["diff", "--no-ext-diff", "--numstat", "-z", "HEAD", "--", ...paths.map(literalPathspec)];
+}
+
+function buildUntrackedNumstatArgv(path: string): string[] {
+  return ["diff", "--no-ext-diff", "--numstat", "-z", "--no-index", "--", "/dev/null", path];
 }
 
 export const NO_INDEX_DIFF_EXIT_CODE = 1;
@@ -38,7 +45,7 @@ type GitProcessResult = {
 };
 
 export type GitDiffResult =
-  | { ok: true; patch: string }
+  | { ok: true; patch: string; binaryPaths?: string[] }
   | { ok: false; reason: "no-files" | "no-diff" | "git-unavailable" | "git-failed"; detail?: string };
 
 export type GitDiffDeps = {
@@ -93,6 +100,28 @@ function runGit(
 
 function joinPatches(patches: readonly string[]): string {
   return patches.filter((patch) => patch.length > 0).map((patch) => patch.endsWith("\n") ? patch : `${patch}\n`).join("");
+}
+
+/** Parse Git's NUL-delimited --numstat output and return binary current paths. */
+function binaryPathsFromNumstat(output: string): string[] {
+  const fields = output.split("\0");
+  const paths: string[] = [];
+  for (let index = 0; index < fields.length; index += 1) {
+    const field = fields[index];
+    if (!field) continue;
+    const match = /^([^\t]+)\t([^\t]+)\t(.*)$/.exec(field);
+    if (!match) continue;
+    const isBinary = match[1] === "-" && match[2] === "-";
+    if (match[3]) {
+      if (isBinary) paths.push(match[3]);
+      continue;
+    }
+    // With -z, rename/copy records put old and new paths in the next fields.
+    index += 2;
+    const currentPath = fields[index];
+    if (isBinary && currentPath) paths.push(currentPath);
+  }
+  return paths;
 }
 
 type ExistingDirectory = {
@@ -212,6 +241,7 @@ export async function generateSelectedGitDiff(
   }
 
   const patches: string[] = [];
+  const binaryPaths = new Set<string>();
   let unborn = false;
   if (head.code !== 0) {
     const headRef = await runGit(repositoryRoot, ["symbolic-ref", "--quiet", "HEAD"], spawn);
@@ -244,6 +274,15 @@ export async function generateSelectedGitDiff(
     }
     patches.push(tracked.stdout);
 
+    const trackedNumstat = await runGit(repositoryRoot, buildTrackedNumstatArgv(paths), spawn);
+    if (trackedNumstat.code === null) {
+      return { ok: false, reason: "git-unavailable", detail: trackedNumstat.stderr };
+    }
+    if (trackedNumstat.code !== 0) {
+      return { ok: false, reason: "git-failed", detail: trackedNumstat.stderr };
+    }
+    binaryPathsFromNumstat(trackedNumstat.stdout).forEach((path) => binaryPaths.add(path));
+
     const untracked = await runGit(
       repositoryRoot,
       [
@@ -275,6 +314,14 @@ export async function generateSelectedGitDiff(
         return { ok: false, reason: "git-failed", detail: addition.stderr };
       }
       patches.push(addition.stdout);
+      const numstat = await runGit(repositoryRoot, buildUntrackedNumstatArgv(path), spawn);
+      if (numstat.code === null) {
+        return { ok: false, reason: "git-unavailable", detail: numstat.stderr };
+      }
+      if (numstat.code !== 0 && numstat.code !== NO_INDEX_DIFF_EXIT_CODE) {
+        return { ok: false, reason: "git-failed", detail: numstat.stderr };
+      }
+      binaryPathsFromNumstat(numstat.stdout).forEach((binaryPath) => binaryPaths.add(binaryPath));
     }
   } else {
     for (const path of paths) {
@@ -286,9 +333,17 @@ export async function generateSelectedGitDiff(
         return { ok: false, reason: "git-failed", detail: addition.stderr };
       }
       patches.push(addition.stdout);
+      const numstat = await runGit(repositoryRoot, buildUntrackedNumstatArgv(path), spawn);
+      if (numstat.code === null) {
+        return { ok: false, reason: "git-unavailable", detail: numstat.stderr };
+      }
+      if (numstat.code !== 0 && numstat.code !== NO_INDEX_DIFF_EXIT_CODE) {
+        return { ok: false, reason: "git-failed", detail: numstat.stderr };
+      }
+      binaryPathsFromNumstat(numstat.stdout).forEach((binaryPath) => binaryPaths.add(binaryPath));
     }
   }
 
   const patch = joinPatches(patches);
-  return patch ? { ok: true, patch } : { ok: false, reason: "no-diff" };
+  return patch ? { ok: true, patch, binaryPaths: [...binaryPaths] } : { ok: false, reason: "no-diff" };
 }

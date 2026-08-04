@@ -5,6 +5,7 @@ All notable changes to the AI Badger VS Code extension are documented here.
 ## Unreleased
 
 - Added **AI Badger: Copy Selected Changes for Review** to Git Source Control file context menus. It copies a CLI-free, selected-file code-review request with the complete Git diff and policy-approved optional full-file context (256 KiB total, 32 KiB per file). Multi-file Source Control selections are included via the SCM rest-argument contract.
+- Binary file contents and encoded Git binary patch bodies are excluded from review payloads. Existing selected binaries receive path, change-kind, and inferred-type metadata under `[ADDITIONAL CONTEXT]`; deleted binaries rely on Git's compact deletion summary.
 
 ## [0.0.3] - 2026-07-30
 

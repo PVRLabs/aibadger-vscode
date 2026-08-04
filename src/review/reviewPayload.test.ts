@@ -164,6 +164,36 @@ suite("buildReviewPayload", () => {
     assert.equal(reads, 0);
   });
 
+  test("keeps a deleted binary summary diff-only payload valid", async () => {
+    const result = await buildReviewPayload("diff --git a/deleted.png b/deleted.png\nBinary files differ\n", [
+      { uri: uri("/repo/deleted.png"), relativePath: "deleted.png", changeKind: "deleted", isBinary: true },
+    ]);
+    assert.equal(result.ok, true);
+    if (!result.ok) return;
+    assert.deepEqual(result.includedFiles, []);
+    assert.deepEqual(result.statuses, [{ path: "deleted.png", reason: "deleted binary file" }]);
+    assert.match(result.payload, /Binary files differ/);
+    assert.doesNotMatch(result.payload, /\[ADDITIONAL CONTEXT\]/);
+    assert.doesNotMatch(result.payload, /--- Binary File: deleted\.png ---/);
+  });
+
+  test("describes every binary change kind without claiming patch content is complete", async () => {
+    const result = await buildReviewPayload("binary summaries", [
+      { uri: uri("/repo/modified.webp"), relativePath: "modified.webp", changeKind: "modified", isBinary: true },
+      { uri: uri("/repo/added.jpg"), relativePath: "added.jpg", changeKind: "tracked-added", isBinary: true },
+      { uri: uri("/repo/new.bin"), relativePath: "new.bin", changeKind: "untracked", isBinary: true },
+      { uri: uri("/repo/renamed.gif"), relativePath: "renamed.gif", changeKind: "renamed", isBinary: true },
+    ]);
+    assert.equal(result.ok, true);
+    if (!result.ok) return;
+    assert.match(result.payload, /modified\.webp[\s\S]*Change: modified[\s\S]*Type: WebP image/);
+    assert.match(result.payload, /added\.jpg[\s\S]*Change: added[\s\S]*Type: JPEG image/);
+    assert.match(result.payload, /new\.bin[\s\S]*Change: untracked[\s\S]*Type: BIN binary file/);
+    assert.match(result.payload, /renamed\.gif[\s\S]*Change: renamed[\s\S]*Type: GIF image/);
+    assert.doesNotMatch(result.payload, /already complete in patch/);
+    assert.doesNotMatch(result.payload, /Content: excluded/);
+  });
+
   test("marks read failures without dropping the diff", async () => {
     const result = await buildReviewPayload("selected patch", [
       { uri: uri("/repo/missing"), relativePath: "missing", changeKind: "modified" },

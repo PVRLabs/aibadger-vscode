@@ -28,7 +28,6 @@ suite("Git selected diff contract", () => {
     assert.deepStrictEqual(buildTrackedDiffArgv(["space name/file.ts", "deleted.ts"]), [
       "diff",
       "--no-ext-diff",
-      "--binary",
       "--full-index",
       "--find-renames",
       "HEAD",
@@ -42,7 +41,6 @@ suite("Git selected diff contract", () => {
     assert.deepStrictEqual(buildUntrackedDiffArgv("new file.ts"), [
       "diff",
       "--no-ext-diff",
-      "--binary",
       "--full-index",
       "--no-index",
       "--",
@@ -59,7 +57,7 @@ suite("Git selected diff contract", () => {
     ]);
   });
 
-  test("proves current local changes for all selected Git states", () => {
+  test("proves current local changes for all selected Git states", async () => {
     const root = mkdtempSync(join(tmpdir(), "ai-badger-git-diff-"));
     const run = (args: string[]) =>
       execFileSync("git", args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
@@ -77,6 +75,8 @@ suite("Git selected diff contract", () => {
       write("deleted.ts", "before\n");
       write("renamed.ts", "rename-before\n");
       write("space name.ts", "before\n");
+      writeFileSync(join(root, "deleted-large.bin"), Buffer.alloc(300 * 1024));
+      writeFileSync(join(root, "modified.bin"), Buffer.from([0, 1, 2]));
       run(["add", "."]);
       run(["commit", "-qm", "initial"]);
 
@@ -91,6 +91,11 @@ suite("Git selected diff contract", () => {
       write("renamed new.ts", "rename-before\nrename-after\n");
       write("-new file.ts", "untracked\n");
       write("space name.ts", "before\nspaced\n");
+      run(["rm", "-q", "deleted-large.bin"]);
+      writeFileSync(join(root, "modified.bin"), Buffer.from([0, 3, 4]));
+      writeFileSync(join(root, "added.bin"), Buffer.from([0, 5, 6]));
+      run(["add", "added.bin"]);
+      writeFileSync(join(root, "untracked.bin"), Buffer.from([0, 7, 8]));
 
       const tracked = run(
         buildTrackedDiffArgv([
@@ -101,6 +106,7 @@ suite("Git selected diff contract", () => {
           "renamed.ts",
           "renamed new.ts",
           "space name.ts",
+          "deleted-large.bin",
         ])
       );
       const mixedPatch = tracked.match(
@@ -119,6 +125,26 @@ suite("Git selected diff contract", () => {
       assert.match(tracked, /deleted\.ts/);
       assert.match(tracked, /space name\.ts/);
       assert.doesNotMatch(tracked, /new file\.ts/);
+      assert.match(tracked, /Binary files .*deleted-large\.bin.* differ/);
+      assert.doesNotMatch(tracked, /GIT binary patch/);
+      assert.ok(Buffer.byteLength(tracked, "utf8") < 50 * 1024);
+
+      const binaryResult = await generateSelectedGitDiff(root, [
+        "deleted-large.bin",
+        "modified.bin",
+        "added.bin",
+        "untracked.bin",
+      ]);
+      assert.equal(binaryResult.ok, true);
+      if (binaryResult.ok) {
+        assert.deepEqual(new Set(binaryResult.binaryPaths), new Set([
+          "deleted-large.bin",
+          "modified.bin",
+          "added.bin",
+          "untracked.bin",
+        ]));
+        assert.doesNotMatch(binaryResult.patch, /GIT binary patch/);
+      }
 
       let untracked = "";
       try {

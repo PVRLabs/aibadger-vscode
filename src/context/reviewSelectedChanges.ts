@@ -163,10 +163,12 @@ export async function reviewSelectedChanges(
       return;
     }
 
+    const binaryPaths = new Set(diff.binaryPaths ?? []);
     const files: ReviewPayloadFile[] = resolved.value.files.map((file) => ({
       uri: file.uri,
       relativePath: file.relativePath,
       isDeleted: file.isDeleted,
+      isBinary: binaryPaths.has(file.relativePath),
       changeKind: metadata.changes.get(file.relativePath)?.changeKind as ReviewChangeKind | undefined,
     }));
     stage = "review payload";

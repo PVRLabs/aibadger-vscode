@@ -183,6 +183,24 @@ suite("reviewSelectedChanges", () => {
     assert.deepEqual(harness.copied, ["selected diff:deleted.ts"]);
   });
 
+  test("passes Git binary classification to additional review context", async () => {
+    let capturedBinary: boolean | undefined;
+    const harness = deps({
+      generateDiff: async () => ({
+        ok: true,
+        patch: "Binary files a/image.png and b/image.png differ\n",
+        binaryPaths: ["image.png"],
+      }),
+      buildPayload: async (diff, files) => {
+        capturedBinary = files[0]?.isBinary;
+        return { ok: true, payload: diff, includedFiles: [], statuses: [] };
+      },
+    });
+    await reviewSelectedChanges([resource("/repo/image.png")], harness.base);
+    assert.equal(capturedBinary, true);
+    assert.equal(harness.copied.length, 1);
+  });
+
   test("expands only a selected rename while keeping one payload file", async () => {
     const diffPaths: string[][] = [];
     const payloadPaths: string[][] = [];

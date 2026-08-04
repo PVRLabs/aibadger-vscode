@@ -1,4 +1,5 @@
 import { open as nodeOpen } from "node:fs/promises";
+import * as path from "node:path";
 import { MAX_REVIEW_FILE_BYTES, MAX_REVIEW_PAYLOAD_BYTES, REVIEW_TASK } from "./reviewPayloadPolicy";
 
 export type ReviewChangeKind =
@@ -14,6 +15,7 @@ export type ReviewPayloadFile = {
   relativePath: string;
   changeKind?: ReviewChangeKind;
   isDeleted?: boolean;
+  isBinary?: boolean;
 };
 
 export type ReviewPayloadReadDeps = {
@@ -99,10 +101,51 @@ function statusBlock(statuses: readonly ReviewFileStatus[]): string {
   ].join("\n");
 }
 
-function render(diff: string, blocks: readonly string[], statuses: readonly ReviewFileStatus[]): string {
+const BINARY_TYPES: Readonly<Record<string, string>> = {
+  ".gif": "GIF image",
+  ".ico": "ICO image",
+  ".jpeg": "JPEG image",
+  ".jpg": "JPEG image",
+  ".pdf": "PDF document",
+  ".png": "PNG image",
+  ".webp": "WebP image",
+  ".zip": "ZIP archive",
+};
+
+function binaryType(relativePath: string): string {
+  const extension = path.extname(relativePath).toLowerCase();
+  return BINARY_TYPES[extension] ?? (extension ? `${extension.slice(1).toUpperCase()} binary file` : "Binary file");
+}
+
+function changeLabel(file: ReviewPayloadFile): string {
+  if (file.isDeleted || file.changeKind === "deleted") return "deleted";
+  switch (file.changeKind) {
+    case "tracked-added": return "added";
+    case "untracked": return "untracked";
+    case "renamed": return "renamed";
+    default: return "modified";
+  }
+}
+
+function binaryBlock(file: ReviewPayloadFile): string {
+  return [
+    `--- Binary File: ${file.relativePath} ---`,
+    `Change: ${changeLabel(file)}`,
+    `Type: ${binaryType(file.relativePath)}`,
+    "--- End Binary File ---",
+  ].join("\n");
+}
+
+function render(
+  diff: string,
+  blocks: readonly string[],
+  additionalBlocks: readonly string[],
+  statuses: readonly ReviewFileStatus[]
+): string {
   return [
     `[TASK]\n${REVIEW_TASK}`,
     `[REVIEW CONTEXT: SELECTED GIT DIFF]\n${diff}`,
+    ...(additionalBlocks.length > 0 ? [`[ADDITIONAL CONTEXT]\n${additionalBlocks.join("\n\n")}`] : []),
     ...(blocks.length > 0 ? [`[CONTEXT]\n${blocks.join("\n\n")}`] : []),
     statusBlock(statuses),
   ].join("\n\n") + "\n";
@@ -147,22 +190,29 @@ export async function buildReviewPayload(
 ): Promise<ReviewPayloadResult> {
   const fixedStatuses: ReviewFileStatus[] = [];
   const candidates: OptionalCandidate[] = [];
+  const additionalBlocks = files
+    .filter((file) => file.isBinary && !file.isDeleted && file.changeKind !== "deleted")
+    .map(binaryBlock);
   const openFile = deps.openFile ?? openReviewFile;
 
   for (const file of files) {
-    const fixedReason = file.isDeleted ? "deleted" : statusFor(file.changeKind);
+    const fixedReason = file.isBinary
+      ? `${changeLabel(file)} binary file`
+      : file.isDeleted ? "deleted" : statusFor(file.changeKind);
     if (fixedReason) {
       fixedStatuses.push({ path: file.relativePath, reason: fixedReason });
     }
   }
 
-  const mandatory = render(diff, [], fixedStatuses);
+  const mandatory = render(diff, [], additionalBlocks, fixedStatuses);
   if (byteLength(mandatory) > MAX_REVIEW_PAYLOAD_BYTES) {
     return { ok: false, reason: "mandatory-overflow", byteLength: byteLength(mandatory) };
   }
 
   for (const file of files) {
-    const fixedReason = file.isDeleted ? "deleted" : statusFor(file.changeKind);
+    const fixedReason = file.isBinary
+      ? `${changeLabel(file)} binary file`
+      : file.isDeleted ? "deleted" : statusFor(file.changeKind);
     if (fixedReason) continue;
     let readResult: BoundedReadResult;
     try {
@@ -207,7 +257,7 @@ export async function buildReviewPayload(
     for (const [index, candidate] of candidates.entries()) {
       if (index >= excludedFrom) break;
       const nextBlocks = [...blocks, candidate.block];
-      const next = render(diff, nextBlocks, fixedStatuses);
+      const next = render(diff, nextBlocks, additionalBlocks, fixedStatuses);
       if (byteLength(next) > MAX_REVIEW_PAYLOAD_BYTES) {
         excludedFrom = index;
         break;
@@ -225,7 +275,7 @@ export async function buildReviewPayload(
         ? [{ path: file.relativePath, reason: "total review-context budget reached" }]
         : [];
     });
-    const payload = render(diff, blocks, statuses);
+    const payload = render(diff, blocks, additionalBlocks, statuses);
     if (byteLength(payload) <= MAX_REVIEW_PAYLOAD_BYTES) {
       return { ok: true, payload, includedFiles, statuses };
     }

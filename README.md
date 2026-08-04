@@ -75,7 +75,7 @@ The project command is available from the Explorer toolbar. File and folder comm
 
 In a Git repository, select one or more changed files in Source Control, right-click, and choose **AI Badger: Copy Selected Changes for Review**. The extension copies a review request containing the selected files' complete Git diff. Small, readable modified files may also be included in full; deleted, added, untracked, binary, unavailable, or oversized files remain diff-only. Git's staged, unstaged, mixed, deleted, renamed, and untracked changes are represented by the selected diff, and unrelated files are not included.
 
-The complete clipboard request is limited to 256 KiB, and optional full-file context is limited to 32 KiB per file. If the mandatory framing and diff exceed 256 KiB, select fewer files. Nothing is shared until you paste the clipboard contents into an AI chat.
+The complete clipboard request is limited to 256 KiB, and optional full-file context is limited to 32 KiB per file. Binary file contents and Git binary patch bodies are excluded; the selected diff retains Git's compact binary-change summary. For added, untracked, modified, and renamed binaries that still exist, `[ADDITIONAL CONTEXT]` records the path, change kind, and inferred type. Deleted binaries rely on Git's deletion summary. If the mandatory framing and diff exceed 256 KiB, select fewer files. Nothing is shared until you paste the clipboard contents into an AI chat.
 
 ## Privacy
 

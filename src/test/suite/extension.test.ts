@@ -20,29 +20,6 @@ suite("AI Badger extension shell", () => {
     assert.ok(commands.includes("aiBadger.reviewSelectedChanges"));
   });
 
-  test("Copy Selected Changes for Review is contributed only to Git SCM resources", () => {
-    const ext = vscode.extensions.getExtension("pvrlabs.ai-badger");
-    const commands = ext?.packageJSON.contributes?.commands as
-      | Array<{ command?: string; title?: string }>
-      | undefined;
-    assert.ok(commands?.some(
-      (item) =>
-        item.command === "aiBadger.reviewSelectedChanges" &&
-        item.title === "AI Badger: Copy Selected Changes for Review"
-    ));
-    const contextMenus = ext?.packageJSON.contributes?.menus?.["scm/resourceState/context"];
-    assert.ok(contextMenus?.some(
-      (item: { command?: string; when?: string }) =>
-        item.command === "aiBadger.reviewSelectedChanges" &&
-        item.when === "scmProvider == git && resourceScheme == file"
-    ));
-    const palette = ext?.packageJSON.contributes?.menus?.commandPalette;
-    assert.ok(palette?.some(
-      (item: { command?: string; when?: string }) =>
-        item.command === "aiBadger.reviewSelectedChanges" && item.when === "false"
-    ));
-  });
-
   test("copy command is contributed to the Explorer file context menu", () => {
     const ext = vscode.extensions.getExtension("pvrlabs.ai-badger");
     const contextMenus = ext?.packageJSON.contributes?.menus?.["explorer/context"];

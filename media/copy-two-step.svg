@@ -1,0 +1,47 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <!--
+    Action mark: clipboard with bold B + four-point spark badge —
+    Badger CLI-assisted / two-step copy. Spark floats outside the
+    upper-right board corner with a clear gap (badge placement).
+    currentColor for themes.
+  -->
+  <!-- Soft fill (board); shifted low-left to leave room for spark -->
+  <rect
+    x="3.6"
+    y="5.6"
+    width="13.4"
+    height="15.6"
+    rx="1.8"
+    fill="currentColor"
+    opacity="0.12"
+  />
+  <!-- Board outline -->
+  <rect
+    x="3.6"
+    y="5.6"
+    width="13.4"
+    height="15.6"
+    rx="1.8"
+    fill="none"
+    stroke="currentColor"
+    stroke-width="1.6"
+  />
+  <!-- Clip (top) -->
+  <path
+    fill="currentColor"
+    d="M7.5 3.7h5.2c.65 0 1.15.5 1.15 1.15v1.55H6.35V4.85c0-.65.5-1.15 1.15-1.15z"
+  />
+  <!-- Bold capital B (board-centered, simplified for small sizes) -->
+  <path
+    fill="currentColor"
+    d="M7.75 9h2.9c1.48 0 2.42.8 2.42 2 0 .8-.42 1.42-1.12 1.72.85.3 1.4 1.02 1.4 2.05 0 1.35-1.05 2.18-2.7 2.18H7.75V9zm1.48 1.2v1.8h1.12c.65 0 1.05-.32 1.05-.9s-.4-.9-1.05-.9h-1.12zm0 3v2.08h1.3c.72 0 1.18-.38 1.18-1.05 0-.68-.46-1.03-1.18-1.03h-1.3z"
+  />
+  <!--
+    Bold four-point spark: solid geometric star (not typographic *).
+    Center (20.35, 2.45), outer r≈2.35 — fully outside board, ~1u gap.
+  -->
+  <path
+    fill="currentColor"
+    d="M20.35.1l.78 2.35 2.35.78-2.35.78-.78 2.35-.78-2.35-2.35-.78 2.35-.78z"
+  />
+</svg>

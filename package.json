@@ -38,29 +38,49 @@
         "command": "aiBadger.askAboutProject",
         "title": "AI Badger: Ask About Project",
         "icon": {
-          "light": "media/badger.svg",
-          "dark": "media/badger.svg"
+          "light": "media/copy-two-step.svg",
+          "dark": "media/copy-two-step.svg"
         }
       },
       {
         "command": "aiBadger.askAboutFolder",
-        "title": "AI Badger: Ask About Folder"
+        "title": "AI Badger: Ask About Folder",
+        "icon": {
+          "light": "media/copy-two-step.svg",
+          "dark": "media/copy-two-step.svg"
+        }
       },
       {
         "command": "aiBadger.askAboutFile",
-        "title": "AI Badger: Ask About File…"
+        "title": "AI Badger: Ask About File…",
+        "icon": {
+          "light": "media/copy-two-step.svg",
+          "dark": "media/copy-two-step.svg"
+        }
       },
       {
         "command": "aiBadger.askAboutSelectedFiles",
-        "title": "AI Badger: Ask About Selected Files…"
+        "title": "AI Badger: Ask About Selected Files…",
+        "icon": {
+          "light": "media/copy-two-step.svg",
+          "dark": "media/copy-two-step.svg"
+        }
       },
       {
         "command": "aiBadger.copyFileWithQuestion",
-        "title": "AI Badger: Copy File for AI"
+        "title": "AI Badger: Copy File for AI",
+        "icon": {
+          "light": "media/copy.svg",
+          "dark": "media/copy.svg"
+        }
       },
       {
         "command": "aiBadger.copyFilesWithQuestion",
-        "title": "AI Badger: Copy Selected Files for AI"
+        "title": "AI Badger: Copy Selected Files for AI",
+        "icon": {
+          "light": "media/copy.svg",
+          "dark": "media/copy.svg"
+        }
       },
       {
         "command": "aiBadger.reviewSelectedChanges",

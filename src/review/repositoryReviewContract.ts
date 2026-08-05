@@ -1,9 +1,8 @@
 /**
  * Phase 2 repository-review surface contract.
  *
- * This describes the commands and target resolution for the later integration
- * chunks. It intentionally has no VS Code registration or runtime behavior;
- * Chunk 2.3 owns exposing these commands.
+ * This describes the commands and target resolution for the repository review
+ * integration. Runtime registration lives in extension.ts.
  */
 
 export const COPY_ALL_CHANGES_FOR_REVIEW_COMMAND =
@@ -58,6 +57,21 @@ export function resolveRepositoryReviewScope(
     repositoryId: candidate.id,
     repositoryRoot: candidate.rootUri.fsPath,
   };
+}
+
+/**
+ * Resolve the title-menu fallback only when VS Code exposes exactly one Git
+ * repository. This keeps the fallback independent of the active editor and
+ * avoids guessing in a multi-repository workspace.
+ */
+export function resolveSingleGitRepositoryReviewScope(
+  repositories: readonly RepositoryTarget[]
+): RepositoryReviewScope | undefined {
+  const gitRepositories = repositories.filter(
+    (repository) => repository.providerId === "git"
+  );
+  if (gitRepositories.length !== 1) return undefined;
+  return resolveRepositoryReviewScope(gitRepositories[0]);
 }
 
 export type RepositoryReviewContract = {

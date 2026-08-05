@@ -12,6 +12,7 @@ import {
   EXPLORER_SELECTION_MENU,
   REPOSITORY_REVIEW_CONTRACT,
   resolveRepositoryReviewScope,
+  resolveSingleGitRepositoryReviewScope,
   SCM_REPOSITORY_MENU,
 } from "./repositoryReviewContract";
 
@@ -53,13 +54,30 @@ suite("repository review action contract", () => {
     assert.equal(resolveRepositoryReviewScope({ rootUri: { fsPath: "/repo" } }), undefined);
   });
 
-  test("does not expose repository actions before the integration chunk", () => {
+  test("uses the title-menu fallback only for one Git repository", () => {
+    assert.deepEqual(
+      resolveSingleGitRepositoryReviewScope([
+        { id: "git:/repo", providerId: "git", rootUri: { fsPath: "/repo" } },
+      ]),
+      { kind: "repository", repositoryId: "git:/repo", repositoryRoot: "/repo" }
+    );
+    assert.equal(resolveSingleGitRepositoryReviewScope([]), undefined);
+    assert.equal(resolveSingleGitRepositoryReviewScope([
+      { id: "git:/a", providerId: "git", rootUri: { fsPath: "/a" } },
+      { id: "git:/b", providerId: "git", rootUri: { fsPath: "/b" } },
+    ]), undefined);
+    assert.equal(resolveSingleGitRepositoryReviewScope([
+      { id: "svn:/repo", providerId: "svn", rootUri: { fsPath: "/repo" } },
+    ]), undefined);
+  });
+
+  test("exposes repository actions after the integration chunk", () => {
     const packageJson = JSON.parse(
       fs.readFileSync(path.resolve(__dirname, "../../package.json"), "utf8")
     ) as { contributes?: { commands?: Array<{ command?: string }> } };
     const commands = packageJson.contributes?.commands ?? [];
-    assert.equal(commands.some((item) => item.command === COPY_ALL_CHANGES_FOR_REVIEW_COMMAND), false);
-    assert.equal(commands.some((item) => item.command === DEEP_REVIEW_COMMAND), false);
+    assert.equal(commands.some((item) => item.command === COPY_ALL_CHANGES_FOR_REVIEW_COMMAND), true);
+    assert.equal(commands.some((item) => item.command === DEEP_REVIEW_COMMAND), true);
   });
 
   test("keeps both icon assets available for the later contribution", () => {

@@ -85,6 +85,22 @@
       {
         "command": "aiBadger.reviewSelectedChanges",
         "title": "AI Badger: Copy Selected Changes for Review"
+      },
+      {
+        "command": "aiBadger.copyAllChangesForReview",
+        "title": "AI Badger: Copy All Changes for Review",
+        "icon": {
+          "light": "media/copy.svg",
+          "dark": "media/copy.svg"
+        }
+      },
+      {
+        "command": "aiBadger.deepReview",
+        "title": "AI Badger: Deep Review",
+        "icon": {
+          "light": "media/copy-two-step.svg",
+          "dark": "media/copy-two-step.svg"
+        }
       }
     ],
     "menus": {
@@ -129,6 +145,52 @@
           "group": "navigation@90"
         }
       ],
+      "scm/sourceControl": [
+        {
+          "command": "aiBadger.copyAllChangesForReview",
+          "when": "scmProvider == git",
+          "group": "navigation@90"
+        },
+        {
+          "command": "aiBadger.deepReview",
+          "when": "scmProvider == git",
+          "group": "navigation@91"
+        }
+      ],
+      "scm/resourceGroup/context": [
+        {
+          "command": "aiBadger.copyAllChangesForReview",
+          "when": "scmProvider == git",
+          "group": "inline@90"
+        },
+        {
+          "command": "aiBadger.deepReview",
+          "when": "scmProvider == git",
+          "group": "inline@91"
+        },
+        {
+          "command": "aiBadger.copyAllChangesForReview",
+          "when": "scmProvider == git",
+          "group": "navigation@90"
+        },
+        {
+          "command": "aiBadger.deepReview",
+          "when": "scmProvider == git",
+          "group": "navigation@91"
+        }
+      ],
+      "scm/title": [
+        {
+          "command": "aiBadger.copyAllChangesForReview",
+          "when": "scmProvider == git",
+          "group": "navigation@90"
+        },
+        {
+          "command": "aiBadger.deepReview",
+          "when": "scmProvider == git",
+          "group": "navigation@91"
+        }
+      ],
       "editor/title/context": [
         {
           "command": "aiBadger.askAboutFile",
@@ -144,6 +206,14 @@
       "commandPalette": [
         {
           "command": "aiBadger.reviewSelectedChanges",
+          "when": "false"
+        },
+        {
+          "command": "aiBadger.copyAllChangesForReview",
+          "when": "false"
+        },
+        {
+          "command": "aiBadger.deepReview",
           "when": "false"
         },
         {

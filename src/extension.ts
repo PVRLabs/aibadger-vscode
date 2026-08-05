@@ -24,6 +24,14 @@ import {
   reviewSelectedChanges,
   REVIEW_SELECTED_CHANGES_COMMAND,
 } from "./context/reviewSelectedChanges";
+import {
+  copyAllChangesForReview,
+  showDeepReviewPlaceholder,
+} from "./context/repositoryReviewCommands";
+import {
+  COPY_ALL_CHANGES_FOR_REVIEW_COMMAND,
+  DEEP_REVIEW_COMMAND,
+} from "./review/repositoryReviewContract";
 
 const INSTALLATION_INSTRUCTIONS_URL =
   "https://github.com/PVRLabs/aibadger/blob/main/docs/install.md";
@@ -142,8 +150,100 @@ export function activate(
           },
         });
       }
+    ),
+    vscode.commands.registerCommand(
+      COPY_ALL_CHANGES_FOR_REVIEW_COMMAND,
+      async (sourceControl?: vscode.SourceControl) => {
+        const target = await resolveRepositoryActionTarget(sourceControl);
+        await copyAllChangesForReview(target.target, {
+          writeClipboard: async (text) => {
+            await vscode.env.clipboard.writeText(text);
+          },
+          showInformationMessage: (message) => {
+            void vscode.window.showInformationMessage(message);
+          },
+          showErrorMessage: (message) => {
+            void vscode.window.showErrorMessage(message);
+          },
+        }, target.repositories);
+      }
+    ),
+    vscode.commands.registerCommand(
+      DEEP_REVIEW_COMMAND,
+      async () => {
+        showDeepReviewPlaceholder((message) => {
+          void vscode.window.showInformationMessage(message);
+        });
+      }
     )
   );
+}
+
+type GitExtension = {
+  getAPI(version: number): {
+    repositories: readonly { rootUri: vscode.Uri }[];
+    getRepository(uri: vscode.Uri): { rootUri: vscode.Uri } | null;
+  };
+};
+
+type RepositoryActionTarget = {
+  target: unknown;
+  repositories: Array<{
+    id: string;
+    providerId?: string;
+    rootUri: { fsPath: string };
+  }>;
+};
+
+async function resolveRepositoryActionTarget(
+  argument: unknown
+): Promise<RepositoryActionTarget> {
+  const extension = vscode.extensions.getExtension<GitExtension>("vscode.git");
+  if (!extension) return { target: argument, repositories: [] };
+  try {
+    const git = (await extension.activate()).getAPI(1);
+    const resourceUri = resourceGroupUri(argument);
+    if (resourceUri) {
+      const repository = git.getRepository(resourceUri);
+      if (repository) {
+        return {
+          target: {
+            id: `git:${repository.rootUri.toString()}`,
+            rootUri: repository.rootUri,
+          },
+          repositories: [],
+        };
+      }
+    }
+    return {
+      target: argument,
+      repositories: gitRepositories(git.repositories),
+    };
+  } catch {
+    return { target: argument, repositories: [] };
+  }
+}
+
+function resourceGroupUri(argument: unknown): vscode.Uri | undefined {
+  if (!argument || typeof argument !== "object") return undefined;
+  const states = (argument as {
+    resourceStates?: readonly { resourceUri?: vscode.Uri }[];
+  }).resourceStates;
+  return states?.find((state) => state.resourceUri)?.resourceUri;
+}
+
+function gitRepositories(
+  repositories: readonly { rootUri: vscode.Uri }[]
+): Array<{
+  id: string;
+  providerId?: string;
+  rootUri: { fsPath: string };
+}> {
+  return repositories.map((repository) => ({
+      id: `git:${repository.rootUri.toString()}`,
+      providerId: "git",
+      rootUri: repository.rootUri,
+  }));
 }
 
 export function deactivate(): void {

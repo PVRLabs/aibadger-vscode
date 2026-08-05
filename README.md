@@ -55,10 +55,14 @@ The extension is desktop-only; it is not a `vscode.dev` web extension.
 
 ### Copy files for an AI chat
 
-Use these commands when you already know which files should be included. AI Badger formats the selected files with their project-relative paths and copies them immediately. Nothing is shared until you paste it.
+Use these commands when you already know which files should be included. AI
+Badger formats the selected files with their project-relative paths and copies
+them immediately. Nothing is shared until you paste it.
 
-* **AI Badger: Copy File for AI** — Copy one file with its project-relative path.
-* **AI Badger: Copy Selected Files for AI** — Copy multiple files with their project-relative paths.
+| Icon | Explorer action | Scope |
+| --- | --- | --- |
+| <img src="media/copy.svg" alt="Direct copy" width="16" height="16"> | **AI Badger: Copy File for AI** | One selected file. |
+| <img src="media/copy.svg" alt="Direct copy" width="16" height="16"> | **AI Badger: Copy Selected Files for AI** | Multiple selected files. |
 
 ### Ask about your code
 
@@ -76,6 +80,21 @@ The project command is available from the Explorer toolbar. File and folder comm
 In a Git repository, select one or more changed files in Source Control, right-click, and choose **AI Badger: Copy Selected Changes for Review**. The extension copies a review request containing the selected files' complete Git diff. Small, readable modified files may also be included in full; deleted, added, untracked, binary, unavailable, or oversized files remain diff-only. Git's staged, unstaged, mixed, deleted, renamed, and untracked changes are represented by the selected diff, and unrelated files are not included.
 
 The complete clipboard request is limited to 256 KiB, and optional full-file context is limited to 32 KiB per file. Binary file contents and Git binary patch bodies are excluded; the selected diff retains Git's compact binary-change summary. For added, untracked, modified, and renamed binaries that still exist, `[ADDITIONAL CONTEXT]` records the path, change kind, and inferred type. Deleted binaries rely on Git's deletion summary. If the mandatory framing and diff exceed 256 KiB, select fewer files. Nothing is shared until you paste the clipboard contents into an AI chat.
+
+### Copy all changes for review
+
+From a Git repository in the Source Control view, choose **AI Badger: Copy All Changes for Review**. The action copies one self-contained review request for that repository's current staged, unstaged, untracked, renamed, and deleted changes. It does not require the Badger CLI and never includes changes from another repository.
+
+These Git Source Control actions are available from the repository actions and
+the **Changes** group. Both require an explicit user action; nothing is sent
+anywhere automatically.
+
+| Icon | Source Control action | Current behavior |
+| --- | --- | --- |
+| <img src="media/copy.svg" alt="Direct copy" width="16" height="16"> | **AI Badger: Copy All Changes for Review** | Copies the repository review request to the clipboard. |
+| <img src="media/copy-two-step.svg" alt="Two-step copy" width="16" height="16"> | **AI Badger: Deep Review** | Visible placeholder; functional Badger-assisted review is planned for a later release. |
+
+The same review limits apply: the complete request is limited to 256 KiB, optional complete text-file context is limited to 32 KiB per file, and binary contents are omitted while compact Git change summaries are retained. A clean repository has no changes to copy. Nothing is shared until you paste the copied request into an AI chat.
 
 ## Privacy
 

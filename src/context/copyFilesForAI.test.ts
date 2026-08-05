@@ -6,12 +6,12 @@ import {
   PER_FILE_EXCLUSION_REASON,
   TOTAL_PAYLOAD_EXCLUSION_REASON,
   UNSUPPORTED_SELECTION_MESSAGE,
-  copyFilesWithQuestion,
+  copyFilesForAI,
   copySuccessMessage,
   resolveExplorerSelection,
   type CopyFilesDeps,
   type CopyUri,
-} from "./copyFilesWithQuestion";
+} from "./copyFilesForAI";
 
 type TestUri = CopyUri & { workspace: string; relativePath: string };
 
@@ -93,7 +93,12 @@ function createHarness(): Harness {
   };
 }
 
-suite("copyFilesWithQuestion", () => {
+suite("copyFilesForAI", () => {
+  test("uses a 500 KiB direct-copy per-file limit", () => {
+    assert.strictEqual(MAX_COPY_FILE_BYTES, 500 * 1024);
+    assert.ok(PER_FILE_EXCLUSION_REASON.includes("500 KiB"));
+  });
+
   test("uses full ordered multi-selection when clicked file is selected", () => {
     const a = uri("a.ts");
     const b = uri("b.ts");
@@ -121,7 +126,7 @@ suite("copyFilesWithQuestion", () => {
   test("falls back to the active file for Command Palette invocation", async () => {
     const harness = createHarness();
     harness.setActive(uri("src/active.ts"));
-    await copyFilesWithQuestion(undefined, undefined, harness.deps);
+    await copyFilesForAI(undefined, undefined, harness.deps);
     assert.strictEqual(harness.clipboard.length, 1);
     assert.ok(harness.clipboard[0].includes("src/active.ts"));
   });
@@ -130,7 +135,7 @@ suite("copyFilesWithQuestion", () => {
     const harness = createHarness();
     const file = uri("src/extension.ts");
     harness.setContents(file, "unsaved");
-    await copyFilesWithQuestion(file, [file], harness.deps);
+    await copyFilesForAI(file, [file], harness.deps);
     assert.deepStrictEqual(harness.infos, [copySuccessMessage(1)]);
     assert.strictEqual(harness.clipboard.length, 1);
     assert.ok(harness.clipboard[0].includes("unsaved"));
@@ -141,7 +146,7 @@ suite("copyFilesWithQuestion", () => {
     const harness = createHarness();
     const a = uri("src/a.ts");
     const b = uri("src/b.ts");
-    await copyFilesWithQuestion(b, [b, a], harness.deps);
+    await copyFilesForAI(b, [b, a], harness.deps);
     assert.strictEqual(harness.clipboard.length, 1);
     assert.ok(harness.clipboard[0].indexOf("src/b.ts") < harness.clipboard[0].indexOf("src/a.ts"));
     assert.ok(!harness.clipboard[0].includes("[QUESTION]"));
@@ -152,7 +157,7 @@ suite("copyFilesWithQuestion", () => {
     const harness = createHarness();
     const a = uri("a.ts", "alpha");
     const b = uri("b.ts", "beta");
-    await copyFilesWithQuestion(a, [a, b], harness.deps);
+    await copyFilesForAI(a, [a, b], harness.deps);
     assert.deepStrictEqual(harness.errors, [CROSS_WORKSPACE_MESSAGE]);
   });
 
@@ -160,13 +165,13 @@ suite("copyFilesWithQuestion", () => {
     const harness = createHarness();
     const folder = uri("src");
     harness.setFolder(folder);
-    await copyFilesWithQuestion(folder, undefined, harness.deps);
+    await copyFilesForAI(folder, undefined, harness.deps);
     assert.deepStrictEqual(harness.errors, [UNSUPPORTED_SELECTION_MESSAGE]);
   });
 
   test("rejects an empty selection", async () => {
     const harness = createHarness();
-    await copyFilesWithQuestion(undefined, undefined, harness.deps);
+    await copyFilesForAI(undefined, undefined, harness.deps);
     assert.deepStrictEqual(harness.errors, [UNSUPPORTED_SELECTION_MESSAGE]);
   });
 
@@ -178,7 +183,7 @@ suite("copyFilesWithQuestion", () => {
       const harness = createHarness();
       const file = uri(name);
       harness.setContents(file, bytes);
-      await copyFilesWithQuestion(file, undefined, harness.deps);
+      await copyFilesForAI(file, undefined, harness.deps);
       assert.deepStrictEqual(harness.errors, []);
       assert.strictEqual(harness.clipboard.length, 1);
       assert.ok(
@@ -195,12 +200,12 @@ suite("copyFilesWithQuestion", () => {
     const bytes = new Uint8Array(MAX_COPY_FILE_BYTES + 1).fill(0x61);
     bytes[bytes.length - 1] = 0;
     harness.setContents(file, bytes);
-    await copyFilesWithQuestion(file, undefined, harness.deps);
+    await copyFilesForAI(file, undefined, harness.deps);
     assert.deepStrictEqual(harness.errors, []);
     assert.strictEqual(harness.clipboard.length, 1);
     assert.ok(harness.clipboard[0].includes("(Binary File)"));
     assert.ok(harness.clipboard[0].includes("Type: BIN"));
-    assert.ok(harness.clipboard[0].includes("Size: 256 KB"));
+    assert.ok(harness.clipboard[0].includes("Size: 512 KB"));
   });
 
   test("lists a per-file oversized file as excluded", async () => {
@@ -210,7 +215,7 @@ suite("copyFilesWithQuestion", () => {
       file,
       new Uint8Array(MAX_COPY_FILE_BYTES + 1).fill("a".charCodeAt(0))
     );
-    await copyFilesWithQuestion(file, undefined, harness.deps);
+    await copyFilesForAI(file, undefined, harness.deps);
     assert.deepStrictEqual(harness.errors, []);
     assert.strictEqual(harness.clipboard.length, 1);
     assert.ok(harness.clipboard[0].includes("[EXCLUDED FILES]"));
@@ -229,7 +234,7 @@ suite("copyFilesWithQuestion", () => {
         new Uint8Array(MAX_COPY_FILE_BYTES).fill("a".charCodeAt(0))
       );
     }
-    await copyFilesWithQuestion(files[0], files, harness.deps);
+    await copyFilesForAI(files[0], files, harness.deps);
     assert.ok(MAX_COPY_PAYLOAD_BYTES < files.length * MAX_COPY_FILE_BYTES);
     assert.deepStrictEqual(harness.errors, []);
     assert.strictEqual(harness.clipboard.length, 1);

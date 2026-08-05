@@ -67,7 +67,7 @@
         }
       },
       {
-        "command": "aiBadger.copyFileWithQuestion",
+        "command": "aiBadger.copyFileForAI",
         "title": "AI Badger: Copy File for AI",
         "icon": {
           "light": "media/copy.svg",
@@ -75,7 +75,7 @@
         }
       },
       {
-        "command": "aiBadger.copyFilesWithQuestion",
+        "command": "aiBadger.copyFilesForAI",
         "title": "AI Badger: Copy Selected Files for AI",
         "icon": {
           "light": "media/copy.svg",
@@ -128,12 +128,12 @@
           "group": "navigation@91"
         },
         {
-          "command": "aiBadger.copyFileWithQuestion",
+          "command": "aiBadger.copyFileForAI",
           "when": "!explorerResourceIsFolder && resourceScheme == file && !listMultiSelection",
           "group": "navigation@90"
         },
         {
-          "command": "aiBadger.copyFilesWithQuestion",
+          "command": "aiBadger.copyFilesForAI",
           "when": "!explorerResourceIsFolder && resourceScheme == file && listMultiSelection",
           "group": "navigation@90"
         }
@@ -198,7 +198,7 @@
           "group": "navigation@91"
         },
         {
-          "command": "aiBadger.copyFileWithQuestion",
+          "command": "aiBadger.copyFileForAI",
           "when": "resourceScheme == file",
           "group": "navigation@90"
         }
@@ -230,11 +230,11 @@
           "when": "false"
         },
         {
-          "command": "aiBadger.copyFileWithQuestion",
+          "command": "aiBadger.copyFileForAI",
           "when": "resourceScheme == file || editorIsOpen"
         },
         {
-          "command": "aiBadger.copyFilesWithQuestion",
+          "command": "aiBadger.copyFilesForAI",
           "when": "false"
         }
       ]

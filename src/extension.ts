@@ -10,11 +10,11 @@ import {
 } from "./client/resolveExecutable";
 import type { BadgerClient } from "./client/types";
 import {
-  COPY_FILE_COMMAND,
-  COPY_FILES_COMMAND,
-  copyFilesWithQuestion,
+  COPY_FILE_FOR_AI_COMMAND,
+  COPY_FILES_FOR_AI_COMMAND,
+  copyFilesForAI,
   type CopyFilesDeps,
-} from "./context/copyFilesWithQuestion";
+} from "./context/copyFilesForAI";
 import { runAsk } from "./flow/runAsk";
 import { resolveAskFileSelection } from "./flow/askSelection";
 import { createVscodeRunAskUi } from "./flow/vscodeUi";
@@ -79,7 +79,7 @@ export function activate(
     uri?: vscode.Uri,
     selectedUris?: vscode.Uri[]
   ): Promise<void> => {
-    await copyFilesWithQuestion(uri, selectedUris, copyFilesDeps);
+    await copyFilesForAI(uri, selectedUris, copyFilesDeps);
   };
   const askAboutSelectedFiles = async (
     resource?: vscode.Uri,
@@ -126,11 +126,11 @@ export function activate(
       askAboutSelectedFiles
     ),
     vscode.commands.registerCommand(
-      COPY_FILE_COMMAND,
+      COPY_FILE_FOR_AI_COMMAND,
       copySelectedFiles
     ),
     vscode.commands.registerCommand(
-      COPY_FILES_COMMAND,
+      COPY_FILES_FOR_AI_COMMAND,
       copySelectedFiles
     ),
     vscode.commands.registerCommand(

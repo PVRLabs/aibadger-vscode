@@ -15,8 +15,8 @@ suite("AI Badger extension shell", () => {
     assert.ok(commands.includes("aiBadger.askAboutFolder"));
     assert.ok(commands.includes("aiBadger.askAboutFile"));
     assert.ok(commands.includes("aiBadger.askAboutSelectedFiles"));
-    assert.ok(commands.includes("aiBadger.copyFileWithQuestion"));
-    assert.ok(commands.includes("aiBadger.copyFilesWithQuestion"));
+    assert.ok(commands.includes("aiBadger.copyFileForAI"));
+    assert.ok(commands.includes("aiBadger.copyFilesForAI"));
     assert.ok(commands.includes("aiBadger.reviewSelectedChanges"));
   });
 
@@ -26,14 +26,14 @@ suite("AI Badger extension shell", () => {
     assert.ok(
       contextMenus?.some(
         (item: { command?: string; when?: string }) =>
-          item.command === "aiBadger.copyFileWithQuestion" &&
+          item.command === "aiBadger.copyFileForAI" &&
           item.when?.includes("!listMultiSelection")
       )
     );
     assert.ok(
       contextMenus?.some(
         (item: { command?: string; when?: string }) =>
-          item.command === "aiBadger.copyFilesWithQuestion" &&
+          item.command === "aiBadger.copyFilesForAI" &&
           item.when?.includes("listMultiSelection")
       )
     );
@@ -72,7 +72,7 @@ suite("AI Badger extension shell", () => {
     assert.ok(
       contextMenus?.some(
         (item: { command?: string; when?: string }) =>
-          item.command === "aiBadger.copyFileWithQuestion" &&
+          item.command === "aiBadger.copyFileForAI" &&
           item.when?.includes("resourceScheme == file")
       )
     );

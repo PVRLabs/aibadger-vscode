@@ -97,8 +97,8 @@ suite("repository review action contract", () => {
     };
     const commands = packageJson.contributes?.commands ?? [];
     for (const command of [
-      "aiBadger.copyFileWithQuestion",
-      "aiBadger.copyFilesWithQuestion",
+      "aiBadger.copyFileForAI",
+      "aiBadger.copyFilesForAI",
     ]) {
       const item = commands.find((candidate) => candidate.command === command);
       assert.deepEqual(item?.icon, {

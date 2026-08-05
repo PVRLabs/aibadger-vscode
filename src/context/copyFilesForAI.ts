@@ -12,9 +12,9 @@ import {
 
 export { resolveExplorerSelection } from "../selection/explorerSelection";
 
-export const COPY_FILES_COMMAND = "aiBadger.copyFilesWithQuestion";
-export const COPY_FILE_COMMAND = "aiBadger.copyFileWithQuestion";
-export const MAX_COPY_FILE_BYTES = 250 * 1024;
+export const COPY_FILES_FOR_AI_COMMAND = "aiBadger.copyFilesForAI";
+export const COPY_FILE_FOR_AI_COMMAND = "aiBadger.copyFileForAI";
+export const MAX_COPY_FILE_BYTES = 500 * 1024;
 export const MAX_COPY_PAYLOAD_BYTES = 1024 * 1024;
 
 export const UNSUPPORTED_SELECTION_MESSAGE =
@@ -24,7 +24,7 @@ export const CROSS_WORKSPACE_MESSAGE =
 export const OVERSIZED_SELECTION_MESSAGE =
   "The selected files are too large to copy as a single context block.";
 export const PER_FILE_EXCLUSION_REASON =
-  "contents exceed the 250 KiB per-file limit";
+  "contents exceed the 500 KiB per-file limit";
 export const TOTAL_PAYLOAD_EXCLUSION_REASON =
   "contents would exceed the 1 MiB total payload limit";
 
@@ -171,7 +171,7 @@ function copyResultMessage(
   }. ${excludedCount} ${noun} listed but excluded by payload limits.`;
 }
 
-export async function copyFilesWithQuestion(
+export async function copyFilesForAI(
   clickedUri: CopyUri | undefined,
   selectedUris: readonly CopyUri[] | undefined,
   deps: CopyFilesDeps

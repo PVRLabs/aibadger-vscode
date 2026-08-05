@@ -319,6 +319,30 @@ suite("Git selected diff contract", () => {
     }
   });
 
+  test("keeps selected metadata order independent of caller path order", async () => {
+    const root = mkdtempSync(join(tmpdir(), "ai-badger-git-selected-order-"));
+    const run = (args: string[]) =>
+      execFileSync("git", args, { cwd: root, encoding: "utf8", stdio: ["ignore", "pipe", "pipe"] });
+    try {
+      run(["init", "-q"]);
+      run(["config", "user.email", "tests@example.invalid"]);
+      run(["config", "user.name", "AI Badger tests"]);
+      writeFileSync(join(root, "a.ts"), "before\n");
+      writeFileSync(join(root, "b.ts"), "before\n");
+      run(["add", "."]);
+      run(["commit", "-qm", "initial"]);
+      writeFileSync(join(root, "a.ts"), "changed a\n");
+      writeFileSync(join(root, "b.ts"), "changed b\n");
+
+      const metadata = await getSelectedGitChangeMetadata(root, ["b.ts", "a.ts"]);
+      assert.equal(metadata.ok, true);
+      if (!metadata.ok) return;
+      assert.deepEqual([...metadata.changes.keys()], ["a.ts", "b.ts"]);
+    } finally {
+      rmSync(root, { recursive: true, force: true });
+    }
+  });
+
   test("resolves a deleted path after its parent directories are removed", async () => {
     const root = mkdtempSync(join(tmpdir(), "ai-badger-git-deleted-parent-"));
     const run = (args: string[]) =>

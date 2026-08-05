@@ -180,6 +180,21 @@ export async function getSelectedGitChangeMetadata(
   paths: readonly string[],
   deps: GitDiffDeps = {}
 ): Promise<GitStatusResult> {
+  const result = await getGitChangeMetadata(repositoryRoot, deps);
+  if (!result.ok) return result;
+
+  const selectedPaths = new Set(paths);
+  const selected = new Map(
+    [...result.changes].filter(([path]) => selectedPaths.has(path))
+  );
+  return { ok: true, changes: selected };
+}
+
+/** Read every current change in exactly one repository in stable path order. */
+export async function getGitChangeMetadata(
+  repositoryRoot: string,
+  deps: GitDiffDeps = {}
+): Promise<GitStatusResult> {
   const result = await runGit(
     repositoryRoot,
     buildGitStatusMetadataArgv(),
@@ -188,7 +203,6 @@ export async function getSelectedGitChangeMetadata(
   if (result.code === null) return { ok: false, reason: "git-unavailable", detail: result.stderr };
   if (result.code !== 0) return { ok: false, reason: "git-failed", detail: result.stderr };
 
-  const selected = new Set(paths);
   const changes = new Map<string, GitChangeMetadata>();
   const records = result.stdout.split("\0");
   for (let index = 0; index < records.length; index += 1) {
@@ -198,7 +212,6 @@ export async function getSelectedGitChangeMetadata(
     const currentPath = record.slice(3);
     const isRename = status.includes("R") || status.includes("C");
     const sourcePath = isRename ? records[++index] : undefined;
-    if (!selected.has(currentPath)) continue;
     const kind: ReviewChangeKind = status === "??"
       ? "untracked"
       : status.includes("D")
@@ -215,7 +228,10 @@ export async function getSelectedGitChangeMetadata(
       diffPaths: isRename && sourcePath ? [sourcePath, currentPath] : [currentPath],
     });
   }
-  return { ok: true, changes };
+  return {
+    ok: true,
+    changes: new Map([...changes.entries()].sort(([left], [right]) => left.localeCompare(right))),
+  };
 }
 
 /** Generate only the selected files' Git patch, without extension-added prose. */

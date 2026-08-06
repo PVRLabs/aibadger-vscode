@@ -185,6 +185,7 @@ export function buildReviewContextArgs(
     pathsFile?: string;
     maxPayloadBytes?: number;
     maxFileBytes?: number;
+    includeTopology?: boolean;
   } = {}
 ): string[] {
   const args = [
@@ -203,6 +204,7 @@ export function buildReviewContextArgs(
   if (options.pathsFile !== undefined) {
     args.push("--paths-file", options.pathsFile);
   }
+  if (options.includeTopology) args.push("--include-topology");
   appendReviewLimits(args, options.maxPayloadBytes, options.maxFileBytes);
   return args;
 }
@@ -449,6 +451,7 @@ export function createBadgerCliClient(
               pathsFile: pathsIndex === undefined ? undefined : paths[pathsIndex],
               maxPayloadBytes: request.maxPayloadBytes,
               maxFileBytes: request.maxFileBytes,
+              includeTopology: request.includeTopology,
             }
           ),
         {
@@ -528,12 +531,22 @@ export async function probeReviewApiCapabilities(
   const help = `${outcome.stdout}\n${outcome.stderr}`;
   let reviewContext = /\breview-context\b/.test(help);
   let reviewContinuation = /\breview-continuation\b/.test(help);
+  let reviewContextTopology = false;
   if (!reviewContext) {
-    reviewContext = await commandHelpSucceeds(
+    const contextHelp = await commandHelpText(
       executable,
       [...scriptArgs, ...REVIEW_CONTEXT_API_ARGS, "--help"],
       runProcess
     );
+    reviewContext = contextHelp !== undefined;
+    reviewContextTopology = contextHelp?.includes("--include-topology") ?? false;
+  } else {
+    const contextHelp = await commandHelpText(
+      executable,
+      [...scriptArgs, ...REVIEW_CONTEXT_API_ARGS, "--help"],
+      runProcess
+    );
+    reviewContextTopology = contextHelp?.includes("--include-topology") ?? false;
   }
   if (!reviewContinuation) {
     reviewContinuation = await commandHelpSucceeds(
@@ -547,6 +560,7 @@ export async function probeReviewApiCapabilities(
     capabilities: {
       reviewContext,
       reviewContinuation,
+      reviewContextTopology,
     },
   };
 }
@@ -561,6 +575,20 @@ async function commandHelpSucceeds(
     return !("error" in outcome) && outcome.exitCode === 0;
   } catch {
     return false;
+  }
+}
+
+async function commandHelpText(
+  executable: string,
+  args: readonly string[],
+  runProcess: RunProcess
+): Promise<string | undefined> {
+  try {
+    const outcome = await runProcess(executable, args);
+    if ("error" in outcome || outcome.exitCode !== 0) return undefined;
+    return `${outcome.stdout}\n${outcome.stderr}`;
+  } catch {
+    return undefined;
   }
 }
 

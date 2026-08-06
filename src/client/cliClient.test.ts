@@ -166,6 +166,12 @@ suite("review API argv", () => {
     ]);
   });
 
+  test("requests topology only with the explicit feature flag", () => {
+    assert.deepStrictEqual(buildReviewContextArgs("/repo", "default", { includeTopology: true }), [
+      "api", "review-context", "--root", "/repo", "--mode", "default", "--include-topology",
+    ]);
+  });
+
   test("builds review-continuation argv and limits", () => {
     assert.deepStrictEqual(
       buildReviewContinuationArgs("/repo", "/tmp/selectors.txt", {
@@ -191,14 +197,16 @@ suite("review API capabilities", () => {
       calls.push([...args]);
       return {
         exitCode: 0,
-        stdout: "review-context  initial review\nreview-continuation  supplemental context\n",
+        stdout: args.includes("review-context")
+          ? "--include-topology\n"
+          : "review-context  initial review\nreview-continuation  supplemental context\n",
         stderr: "",
       };
     });
-    assert.deepStrictEqual(calls, [["api", "--help"]]);
+    assert.deepStrictEqual(calls, [["api", "--help"], ["api", "review-context", "--help"]]);
     assert.deepStrictEqual(result, {
       ok: true,
-      capabilities: { reviewContext: true, reviewContinuation: true },
+      capabilities: { reviewContext: true, reviewContinuation: true, reviewContextTopology: true },
     });
   });
 
@@ -210,7 +218,7 @@ suite("review API capabilities", () => {
     }));
     assert.deepStrictEqual(absent, {
       ok: true,
-      capabilities: { reviewContext: false, reviewContinuation: false },
+      capabilities: { reviewContext: false, reviewContinuation: false, reviewContextTopology: false },
     });
     const missing = await probeReviewApiCapabilities("badger", async () => ({
       error: { code: "ENOENT", message: "not found" },
@@ -233,7 +241,7 @@ suite("review API capabilities", () => {
     });
     assert.deepStrictEqual(result, {
       ok: true,
-      capabilities: { reviewContext: true, reviewContinuation: false },
+      capabilities: { reviewContext: true, reviewContinuation: false, reviewContextTopology: false },
     });
     assert.deepStrictEqual(calls, [
       ["api", "--help"],

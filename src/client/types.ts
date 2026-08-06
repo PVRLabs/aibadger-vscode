@@ -96,6 +96,8 @@ export type ReviewContextRequest = {
   selectedPaths?: readonly string[];
   maxPayloadBytes?: number;
   maxFileBytes?: number;
+  /** Request Badger-owned topology/source-tree composition. */
+  includeTopology?: boolean;
   signal?: AbortSignal;
 };
 
@@ -111,6 +113,7 @@ export type ReviewContinuationRequest = {
 export type ReviewApiCapabilities = {
   reviewContext: boolean;
   reviewContinuation: boolean;
+  reviewContextTopology: boolean;
 };
 
 export type ReviewCapabilityResult =

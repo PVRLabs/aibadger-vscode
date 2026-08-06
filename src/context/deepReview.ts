@@ -38,10 +38,17 @@ export async function prepareDeepReviewPrompt(
       message: "This Badger version does not support Deep Review.",
     };
   }
+  if (!capabilities.capabilities.reviewContextTopology) {
+    return {
+      ok: false,
+      message: "This Badger version does not support topology-aware Deep Review.",
+    };
+  }
 
   const result: GeneratePromptResult = await deps.client.reviewContext({
     repositoryRoot: deps.repositoryRoot,
     guidance: guidance.trim(),
+    includeTopology: true,
   });
   if (!result.ok) {
     return { ok: false, message: result.message };

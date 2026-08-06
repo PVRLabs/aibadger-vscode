@@ -227,7 +227,7 @@ suite("Deep Review executable recovery client", () => {
       async reviewCapabilities() {
         calls.push(`capabilities:${label}`);
         return executable
-          ? { ok: true, capabilities: { reviewContext: true, reviewContinuation: true } }
+          ? { ok: true, capabilities: { reviewContext: true, reviewContinuation: true, reviewContextTopology: true } }
           : {
               ok: false,
               kind: "executableUnavailable",
@@ -279,7 +279,7 @@ suite("Deep Review executable recovery client", () => {
     const client = createReviewExecutableRecoveringClient({
       createClient: () => ({
         async reviewCapabilities() {
-          return { ok: true, capabilities: { reviewContext: true, reviewContinuation: true } };
+          return { ok: true, capabilities: { reviewContext: true, reviewContinuation: true, reviewContextTopology: true } };
         },
         async reviewContext() {
           return { ok: false, kind: "cancelled", message: "cancelled" };
@@ -306,8 +306,8 @@ suite("Deep Review executable recovery client", () => {
           const label = executable ?? "badger";
           calls.push(`capabilities:${label}`);
           return executable
-            ? { ok: true, capabilities: { reviewContext: true, reviewContinuation: true } }
-            : { ok: true, capabilities: { reviewContext: false, reviewContinuation: false } };
+            ? { ok: true, capabilities: { reviewContext: true, reviewContinuation: true, reviewContextTopology: true } }
+            : { ok: true, capabilities: { reviewContext: false, reviewContinuation: false, reviewContextTopology: false } };
         },
         async reviewContext() {
           return { ok: true, prompt: "review" };
@@ -326,7 +326,7 @@ suite("Deep Review executable recovery client", () => {
 
     assert.deepStrictEqual(result, {
       ok: true,
-      capabilities: { reviewContext: true, reviewContinuation: true },
+      capabilities: { reviewContext: true, reviewContinuation: true, reviewContextTopology: true },
     });
     assert.deepStrictEqual(calls, [
       "capabilities:badger",

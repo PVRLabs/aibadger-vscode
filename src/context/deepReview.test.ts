@@ -10,10 +10,10 @@ function harness(overrides: Partial<BadgerReviewClient> = {}) {
   const client: BadgerReviewClient = {
     async reviewCapabilities() {
       calls.push("capabilities");
-      return { ok: true, capabilities: { reviewContext: true, reviewContinuation: true } };
+      return { ok: true, capabilities: { reviewContext: true, reviewContinuation: true, reviewContextTopology: true } };
     },
     async reviewContext(request) {
-      calls.push(`context:${request.repositoryRoot}:${request.guidance}`);
+      calls.push(`context:${request.repositoryRoot}:${request.guidance}:${request.includeTopology}`);
       return { ok: true, prompt: "  [TASK]\nreview\n" };
     },
     async reviewContinuation() {
@@ -51,7 +51,7 @@ suite("prepareDeepReviewPrompt", () => {
     const result = await prepareDeepReviewPrompt("  focus on races  ", undefined, h.deps);
 
     assert.deepEqual(result, { ok: true });
-    assert.deepEqual(h.calls, ["capabilities", "context:/repo:focus on races"]);
+    assert.deepEqual(h.calls, ["capabilities", "context:/repo:focus on races:true"]);
     assert.deepEqual(h.clipboard, ["  [TASK]\nreview\n"]);
     assert.deepEqual(h.opened, []);
     assert.equal(h.messages[0], "AI Badger review prompt copied to clipboard.");
@@ -86,7 +86,7 @@ suite("prepareDeepReviewPrompt", () => {
     const unsupported = harness({
       reviewCapabilities: async () => ({
         ok: true,
-        capabilities: { reviewContext: false, reviewContinuation: true },
+        capabilities: { reviewContext: false, reviewContinuation: true, reviewContextTopology: false },
       }),
     });
     const unsupportedResult = await prepareDeepReviewPrompt("review", undefined, unsupported.deps);

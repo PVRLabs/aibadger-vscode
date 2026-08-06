@@ -47,7 +47,6 @@ import type {
   GeneratePromptFailure,
   PromptRequest,
   PromptFocus,
-  ReviewCapabilityResult,
   ReviewContextRequest,
   ReviewContinuationRequest,
   ReviewMode,
@@ -412,14 +411,6 @@ export function createBadgerCliClient(
       );
     },
 
-    async reviewCapabilities(): Promise<ReviewCapabilityResult> {
-      return probeReviewApiCapabilities(
-        options.executable,
-        runProcess,
-        scriptArgs
-      );
-    },
-
     async reviewContext(
       request: ReviewContextRequest
     ): Promise<GeneratePromptResult> {
@@ -496,100 +487,6 @@ function cancelledResult(): GeneratePromptResult {
     kind: "cancelled",
     message: "Badger operation was cancelled.",
   };
-}
-
-export async function probeReviewApiCapabilities(
-  executable: string,
-  runProcess: RunProcess = createSpawnRunProcess(),
-  scriptArgs: readonly string[] = []
-): Promise<ReviewCapabilityResult> {
-  let outcome: Awaited<ReturnType<RunProcess>>;
-  try {
-    outcome = await runProcess(executable, [...scriptArgs, "api", "--help"]);
-  } catch (error) {
-    const message = error instanceof Error ? error.message : "process runner failed";
-    return {
-      ok: false,
-      kind: "generationFailed",
-      message: sanitizeDiagnostic(`Could not run Badger: ${message}`),
-    };
-  }
-  if ("error" in outcome) {
-    return mapSpawnError(outcome.error, executable);
-  }
-  if (outcome.exitCode !== 0) {
-    const failure = mapProcessOutcome(outcome);
-    if (!failure.ok) {
-      return failure;
-    }
-    return {
-      ok: false,
-      kind: "malformedResult",
-      message: "Badger capability check returned an invalid result.",
-    };
-  }
-  const help = `${outcome.stdout}\n${outcome.stderr}`;
-  let reviewContext = /\breview-context\b/.test(help);
-  let reviewContinuation = /\breview-continuation\b/.test(help);
-  let reviewContextTopology = false;
-  if (!reviewContext) {
-    const contextHelp = await commandHelpText(
-      executable,
-      [...scriptArgs, ...REVIEW_CONTEXT_API_ARGS, "--help"],
-      runProcess
-    );
-    reviewContext = contextHelp !== undefined;
-    reviewContextTopology = contextHelp?.includes("--include-topology") ?? false;
-  } else {
-    const contextHelp = await commandHelpText(
-      executable,
-      [...scriptArgs, ...REVIEW_CONTEXT_API_ARGS, "--help"],
-      runProcess
-    );
-    reviewContextTopology = contextHelp?.includes("--include-topology") ?? false;
-  }
-  if (!reviewContinuation) {
-    reviewContinuation = await commandHelpSucceeds(
-      executable,
-      [...scriptArgs, ...REVIEW_CONTINUATION_API_ARGS, "--help"],
-      runProcess
-    );
-  }
-  return {
-    ok: true,
-    capabilities: {
-      reviewContext,
-      reviewContinuation,
-      reviewContextTopology,
-    },
-  };
-}
-
-async function commandHelpSucceeds(
-  executable: string,
-  args: readonly string[],
-  runProcess: RunProcess
-): Promise<boolean> {
-  try {
-    const outcome = await runProcess(executable, args);
-    return !("error" in outcome) && outcome.exitCode === 0;
-  } catch {
-    return false;
-  }
-}
-
-async function commandHelpText(
-  executable: string,
-  args: readonly string[],
-  runProcess: RunProcess
-): Promise<string | undefined> {
-  try {
-    const outcome = await runProcess(executable, args);
-    if ("error" in outcome || outcome.exitCode !== 0) return undefined;
-    return `${outcome.stdout}\n${outcome.stderr}`;
-  } catch {
-    return undefined;
-  }
 }
 
 function redactFailure(

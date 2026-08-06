@@ -224,16 +224,6 @@ suite("Deep Review executable recovery client", () => {
   ): BadgerReviewClient {
     const label = executable ?? "badger";
     return {
-      async reviewCapabilities() {
-        calls.push(`capabilities:${label}`);
-        return executable
-          ? { ok: true, capabilities: { reviewContext: true, reviewContinuation: true, reviewContextTopology: true } }
-          : {
-              ok: false,
-              kind: "executableUnavailable",
-              message: "Badger executable not found",
-            };
-      },
       async reviewContext() {
         calls.push(`context:${label}`);
         return executable
@@ -251,24 +241,21 @@ suite("Deep Review executable recovery client", () => {
     };
   }
 
-  test("retries review capability and generation calls with one chosen executable", async () => {
+  test("retries review generation and remembers the chosen executable", async () => {
     const calls: string[] = [];
     const client = createReviewExecutableRecoveringClient({
       createClient: (executable) => reviewClient(executable, calls),
       recoverExecutable: async () => "/opt/badger",
     });
-    const capabilities = await client.reviewCapabilities();
     const context = await client.reviewContext({ repositoryRoot: "/repo" });
     const continuation = await client.reviewContinuation({
       repositoryRoot: "/repo",
       selectors: "FILE:README.md",
     });
-    assert.strictEqual(capabilities.ok, true);
     assert.deepStrictEqual(context, { ok: true, prompt: "review" });
     assert.deepStrictEqual(continuation, { ok: true, prompt: "supplemental" });
     assert.deepStrictEqual(calls, [
-      "capabilities:badger",
-      "capabilities:/opt/badger",
+      "context:badger",
       "context:/opt/badger",
       "continuation:/opt/badger",
     ]);
@@ -278,9 +265,6 @@ suite("Deep Review executable recovery client", () => {
     let recoveryCalls = 0;
     const client = createReviewExecutableRecoveringClient({
       createClient: () => ({
-        async reviewCapabilities() {
-          return { ok: true, capabilities: { reviewContext: true, reviewContinuation: true, reviewContextTopology: true } };
-        },
         async reviewContext() {
           return { ok: false, kind: "cancelled", message: "cancelled" };
         },
@@ -298,19 +282,16 @@ suite("Deep Review executable recovery client", () => {
     assert.strictEqual(recoveryCalls, 0);
   });
 
-  test("recovers an installed executable that lacks review-context", async () => {
+  test("recovers when the requested review operation is unsupported", async () => {
     const calls: string[] = [];
     const client = createReviewExecutableRecoveringClient({
       createClient: (executable) => ({
-        async reviewCapabilities() {
-          const label = executable ?? "badger";
-          calls.push(`capabilities:${label}`);
-          return executable
-            ? { ok: true, capabilities: { reviewContext: true, reviewContinuation: true, reviewContextTopology: true } }
-            : { ok: true, capabilities: { reviewContext: false, reviewContinuation: false, reviewContextTopology: false } };
-        },
         async reviewContext() {
-          return { ok: true, prompt: "review" };
+          const label = executable ?? "badger";
+          calls.push(`context:${label}`);
+          return executable
+            ? { ok: true, prompt: "review" }
+            : { ok: false, kind: "unsupportedApi", message: "unsupported" };
         },
         async reviewContinuation() {
           return { ok: true, prompt: "supplemental" };
@@ -322,15 +303,12 @@ suite("Deep Review executable recovery client", () => {
       recoverUnsupportedApi: async () => "/opt/new-badger",
     });
 
-    const result = await client.reviewCapabilities();
+    const result = await client.reviewContext({ repositoryRoot: "/repo" });
 
-    assert.deepStrictEqual(result, {
-      ok: true,
-      capabilities: { reviewContext: true, reviewContinuation: true, reviewContextTopology: true },
-    });
+    assert.deepStrictEqual(result, { ok: true, prompt: "review" });
     assert.deepStrictEqual(calls, [
-      "capabilities:badger",
-      "capabilities:/opt/new-badger",
+      "context:badger",
+      "context:/opt/new-badger",
     ]);
   });
 });

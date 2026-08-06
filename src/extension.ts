@@ -373,7 +373,6 @@ function isBadgerReviewClient(
 ): value is BadgerClient & BadgerReviewClient {
   const candidate = value as Partial<BadgerReviewClient>;
   return (
-    typeof candidate.reviewCapabilities === "function" &&
     typeof candidate.reviewContext === "function" &&
     typeof candidate.reviewContinuation === "function"
   );

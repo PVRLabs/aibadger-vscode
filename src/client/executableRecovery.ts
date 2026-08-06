@@ -5,7 +5,6 @@ import type {
   ExtractRequest,
   GeneratePromptResult,
   PromptRequest,
-  ReviewCapabilityResult,
   ReviewContextRequest,
   ReviewContinuationRequest,
 } from "./types";
@@ -86,9 +85,9 @@ export function createReviewExecutableRecoveringClient(
 ): BadgerReviewClient {
   let chosenExecutable: string | undefined;
 
-  async function recover<
-    T extends GeneratePromptResult | ReviewCapabilityResult,
-  >(run: (client: BadgerReviewClient) => Promise<T>): Promise<T> {
+  async function recover<T extends GeneratePromptResult>(
+    run: (client: BadgerReviewClient) => Promise<T>
+  ): Promise<T> {
     const result = await run(options.createClient(chosenExecutable));
     if (result.ok) {
       return result;
@@ -111,21 +110,6 @@ export function createReviewExecutableRecoveringClient(
   }
 
   return {
-    async reviewCapabilities(): Promise<ReviewCapabilityResult> {
-      const result = await recover((client) => client.reviewCapabilities());
-      if (result.ok && result.capabilities.reviewContext) {
-        return result;
-      }
-      if (!result.ok || !options.recoverUnsupportedApi) {
-        return result;
-      }
-      const executable = await options.recoverUnsupportedApi();
-      if (!executable) {
-        return result;
-      }
-      chosenExecutable = executable;
-      return options.createClient(executable).reviewCapabilities();
-    },
     reviewContext(request: ReviewContextRequest): Promise<GeneratePromptResult> {
       return recover((client) => client.reviewContext(request));
     },

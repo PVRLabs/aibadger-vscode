@@ -28,23 +28,6 @@ export async function prepareDeepReviewPrompt(
   action: PreparePromptAction | undefined,
   deps: DeepReviewPreparationDeps
 ): Promise<PreparePromptResult> {
-  const capabilities = await deps.client.reviewCapabilities();
-  if (!capabilities.ok) {
-    return { ok: false, message: capabilities.message };
-  }
-  if (!capabilities.capabilities.reviewContext) {
-    return {
-      ok: false,
-      message: "This Badger version does not support Deep Review.",
-    };
-  }
-  if (!capabilities.capabilities.reviewContextTopology) {
-    return {
-      ok: false,
-      message: "This Badger version does not support topology-aware Deep Review.",
-    };
-  }
-
   const result: GeneratePromptResult = await deps.client.reviewContext({
     repositoryRoot: deps.repositoryRoot,
     guidance: guidance.trim(),

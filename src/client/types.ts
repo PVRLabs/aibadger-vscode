@@ -110,19 +110,8 @@ export type ReviewContinuationRequest = {
   signal?: AbortSignal;
 };
 
-export type ReviewApiCapabilities = {
-  reviewContext: boolean;
-  reviewContinuation: boolean;
-  reviewContextTopology: boolean;
-};
-
-export type ReviewCapabilityResult =
-  | { ok: true; capabilities: ReviewApiCapabilities }
-  | GeneratePromptFailure;
-
 /** Badger-backed operations used by the future Deep Review controller. */
 export interface BadgerReviewClient {
-  reviewCapabilities(): Promise<ReviewCapabilityResult>;
   reviewContext(request: ReviewContextRequest): Promise<GeneratePromptResult>;
   reviewContinuation(
     request: ReviewContinuationRequest

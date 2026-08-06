@@ -8,10 +8,6 @@ function harness(overrides: Partial<BadgerReviewClient> = {}) {
   const opened: string[] = [];
   const messages: string[] = [];
   const client: BadgerReviewClient = {
-    async reviewCapabilities() {
-      calls.push("capabilities");
-      return { ok: true, capabilities: { reviewContext: true, reviewContinuation: true, reviewContextTopology: true } };
-    },
     async reviewContext(request) {
       calls.push(`context:${request.repositoryRoot}:${request.guidance}:${request.includeTopology}`);
       return { ok: true, prompt: "  [TASK]\nreview\n" };
@@ -46,12 +42,12 @@ function harness(overrides: Partial<BadgerReviewClient> = {}) {
 }
 
 suite("prepareDeepReviewPrompt", () => {
-  test("checks capability, generates once, and copies stdout verbatim", async () => {
+  test("generates once and copies stdout verbatim", async () => {
     const h = harness();
     const result = await prepareDeepReviewPrompt("  focus on races  ", undefined, h.deps);
 
     assert.deepEqual(result, { ok: true });
-    assert.deepEqual(h.calls, ["capabilities", "context:/repo:focus on races:true"]);
+    assert.deepEqual(h.calls, ["context:/repo:focus on races:true"]);
     assert.deepEqual(h.clipboard, ["  [TASK]\nreview\n"]);
     assert.deepEqual(h.opened, []);
     assert.equal(h.messages[0], "AI Badger review prompt copied to clipboard.");
@@ -82,18 +78,7 @@ suite("prepareDeepReviewPrompt", () => {
     assert.ok(!h.opened[0].includes("[TASK]"));
   });
 
-  test("does not write the clipboard when capability or generation fails", async () => {
-    const unsupported = harness({
-      reviewCapabilities: async () => ({
-        ok: true,
-        capabilities: { reviewContext: false, reviewContinuation: true, reviewContextTopology: false },
-      }),
-    });
-    const unsupportedResult = await prepareDeepReviewPrompt("review", undefined, unsupported.deps);
-    assert.equal(unsupportedResult.ok, false);
-    assert.deepEqual(unsupported.clipboard, []);
-    assert.deepEqual(unsupported.calls, []);
-
+  test("does not write the clipboard when generation fails", async () => {
     const failed = harness({
       reviewContext: async () => ({
         ok: false,

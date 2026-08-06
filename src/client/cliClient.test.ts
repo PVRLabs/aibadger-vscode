@@ -14,7 +14,6 @@ import {
   goalTextForWire,
   PROMPT_API_ARGS,
   PROMPT_FOCUS,
-  probeReviewApiCapabilities,
   REVIEW_CONTEXT_API_ARGS,
   REVIEW_CONTINUATION_API_ARGS,
   type RunProcess,
@@ -186,67 +185,6 @@ suite("review API argv", () => {
     );
     assert.deepStrictEqual([...REVIEW_CONTINUATION_API_ARGS], [
       "api", "review-continuation",
-    ]);
-  });
-});
-
-suite("review API capabilities", () => {
-  test("detects review operations from api help without a version threshold", async () => {
-    const calls: string[][] = [];
-    const result = await probeReviewApiCapabilities("badger", async (_exe, args) => {
-      calls.push([...args]);
-      return {
-        exitCode: 0,
-        stdout: args.includes("review-context")
-          ? "--include-topology\n"
-          : "review-context  initial review\nreview-continuation  supplemental context\n",
-        stderr: "",
-      };
-    });
-    assert.deepStrictEqual(calls, [["api", "--help"], ["api", "review-context", "--help"]]);
-    assert.deepStrictEqual(result, {
-      ok: true,
-      capabilities: { reviewContext: true, reviewContinuation: true, reviewContextTopology: true },
-    });
-  });
-
-  test("reports absent capabilities and maps missing executable", async () => {
-    const absent = await probeReviewApiCapabilities("badger", async (_exe, args) => ({
-      exitCode: args.includes("review-context") || args.includes("review-continuation") ? 2 : 0,
-      stdout: args.length === 2 ? "topology\nprompt\nextract\n" : "",
-      stderr: "",
-    }));
-    assert.deepStrictEqual(absent, {
-      ok: true,
-      capabilities: { reviewContext: false, reviewContinuation: false, reviewContextTopology: false },
-    });
-    const missing = await probeReviewApiCapabilities("badger", async () => ({
-      error: { code: "ENOENT", message: "not found" },
-    }));
-    assert.strictEqual(missing.ok, false);
-    if (!missing.ok) {
-      assert.strictEqual(missing.kind, "executableUnavailable");
-    }
-  });
-
-  test("falls back to command-specific help when aggregate help is incomplete", async () => {
-    const calls: string[][] = [];
-    const result = await probeReviewApiCapabilities("badger", async (_exe, args) => {
-      calls.push([...args]);
-      return {
-        exitCode: args.length === 2 || args.includes("review-context") ? 0 : 2,
-        stdout: args.includes("review-context") ? "Usage: review-context" : "",
-        stderr: "",
-      };
-    });
-    assert.deepStrictEqual(result, {
-      ok: true,
-      capabilities: { reviewContext: true, reviewContinuation: false, reviewContextTopology: false },
-    });
-    assert.deepStrictEqual(calls, [
-      ["api", "--help"],
-      ["api", "review-context", "--help"],
-      ["api", "review-continuation", "--help"],
     ]);
   });
 });

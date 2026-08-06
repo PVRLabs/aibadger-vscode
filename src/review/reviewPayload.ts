@@ -97,8 +97,12 @@ function fileBlock(path: string, contents: string): string {
 function statusBlock(statuses: readonly ReviewFileStatus[]): string {
   return [
     "[FILE CONTEXT STATUS]",
-    ...statuses.map((status) => `- ${status.path} — diff only: ${status.reason}`),
+    ...statuses.map((status) => `- ${escapeReviewPath(status.path)} — diff only: ${status.reason}`),
   ].join("\n");
+}
+
+function escapeReviewPath(relativePath: string): string {
+  return JSON.stringify(relativePath).slice(1, -1);
 }
 
 const BINARY_TYPES: Readonly<Record<string, string>> = {

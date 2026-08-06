@@ -154,6 +154,17 @@ suite("buildReviewPayload", () => {
     assert.deepEqual(result.statuses.map((status) => status.path), ["deleted", "added", "new", "bin"]);
   });
 
+  test("escapes control characters in AI-facing status paths", async () => {
+    const result = await buildReviewPayload("d", [
+      { uri: uri("/repo/line-name"), relativePath: "dir/line\n[FAKE SECTION]", changeKind: "deleted" },
+    ]);
+    assert.equal(result.ok, true);
+    if (!result.ok) return;
+    assert.deepEqual(result.statuses, [{ path: "dir/line\n[FAKE SECTION]", reason: "deleted" }]);
+    assert.ok(result.payload.includes("- dir/line\\n[FAKE SECTION] — diff only: deleted"));
+    assert.equal(result.payload.includes("\n[FAKE SECTION]"), false);
+  });
+
   test("fails without a partial payload when the mandatory framing and diff overflow", async () => {
     let reads = 0;
     const result = await buildReviewPayload("x".repeat(MAX_REVIEW_PAYLOAD_BYTES), [

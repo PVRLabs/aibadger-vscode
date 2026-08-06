@@ -1,7 +1,6 @@
 import { formatByteSize } from "../flow/promptSummary";
 import { buildRepositoryReviewPayload } from "./repositoryReviewChanges";
 import {
-  DEEP_REVIEW_PLACEHOLDER_MESSAGE,
   resolveRepositoryReviewScope,
   resolveSingleGitRepositoryReviewScope,
   type RepositoryTarget,
@@ -110,13 +109,6 @@ export async function copyAllChangesForReview(
       Buffer.byteLength(result.payload, "utf8")
     )
   );
-}
-
-/** The intentionally side-effect-free Deep Review integration placeholder. */
-export function showDeepReviewPlaceholder(
-  showInformationMessage: (message: string) => void
-): void {
-  showInformationMessage(DEEP_REVIEW_PLACEHOLDER_MESSAGE);
 }
 
 export type { RepositoryReviewScope };

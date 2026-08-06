@@ -19,9 +19,6 @@ export const BADGER_ACTION_ICON = "media/copy-two-step.svg";
 export const SCM_REPOSITORY_MENU = "scm/sourceControl";
 export const EXPLORER_SELECTION_MENU = "explorer/context";
 
-export const DEEP_REVIEW_PLACEHOLDER_MESSAGE =
-  "Deep Review is not implemented yet.";
-
 export type RepositoryTarget = {
   id: string;
   providerId?: string;
@@ -90,7 +87,7 @@ export type RepositoryReviewContract = {
     menu: string;
     scope: "one-source-control-repository";
     requiresBadger: true;
-    initialState: "placeholder";
+    initialState: "guidance";
   };
   explorer: {
     menu: string;
@@ -115,7 +112,7 @@ export const REPOSITORY_REVIEW_CONTRACT: RepositoryReviewContract = {
     menu: SCM_REPOSITORY_MENU,
     scope: "one-source-control-repository",
     requiresBadger: true,
-    initialState: "placeholder",
+    initialState: "guidance",
   },
   explorer: {
     menu: EXPLORER_SELECTION_MENU,

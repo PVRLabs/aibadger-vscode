@@ -4,6 +4,11 @@ import {
 } from "./askWizardHtml";
 import {
   ASK_DIALOG_TITLE,
+  DEEP_REVIEW_COPY_LABEL,
+  DEEP_REVIEW_DIALOG_TITLE,
+  DEEP_REVIEW_REQUEST_PLACEHOLDER,
+  DEEP_REVIEW_REQUEST_PROMPT,
+  DEEP_REVIEW_STEP1_HINT,
   COMPLETION_NEXT_STEPS,
   COMPLETION_NEXT_STEPS_TITLE,
   COPY_REQUESTED_FILES_LABEL,
@@ -92,6 +97,13 @@ export type AskWizardOptions = {
   ) => Promise<string | undefined>;
   /** Open the public, provider-neutral browser handoff guide. */
   onOpenHandoffGuide?: () => Promise<void>;
+  /** Optional first-step copy used by the repository-scoped Deep Review UI. */
+  firstStepCopy?: {
+    prompt: string;
+    placeholder: string;
+    hint: string;
+    copyLabel: string;
+  };
 };
 
 /** Packaged brand mark shown in the wizard header. */
@@ -183,7 +195,8 @@ export function showAskWizard(
       config: createWizardConfig(
         title,
         chatProviders,
-        options.executableUnavailable ?? false
+        options.executableUnavailable ?? false,
+        options.firstStepCopy
       ),
     });
 
@@ -197,21 +210,44 @@ export function showAskWizard(
   });
 }
 
+/** Open the reusable Ask panel with Deep Review's first-step guidance copy. */
+export function showDeepReviewWizard(
+  options: Omit<AskWizardOptions, "title" | "firstStepCopy">
+): Promise<AskWizardResult | undefined> {
+  return showAskWizard({
+    ...options,
+    title: DEEP_REVIEW_DIALOG_TITLE,
+    firstStepCopy: {
+      prompt: DEEP_REVIEW_REQUEST_PROMPT,
+      placeholder: DEEP_REVIEW_REQUEST_PLACEHOLDER,
+      hint: DEEP_REVIEW_STEP1_HINT,
+      copyLabel: DEEP_REVIEW_COPY_LABEL,
+    },
+  });
+}
+
 function createWizardConfig(
   title: string,
   chatProviders: readonly ChatProviderMenuItem[],
-  executableUnavailable: boolean
+  executableUnavailable: boolean,
+  firstStepCopy?: AskWizardOptions["firstStepCopy"]
 ): AskWizardContract.WebviewConfig {
+  const copy = firstStepCopy ?? {
+    prompt: REQUEST_INPUT_PROMPT,
+    placeholder: REQUEST_INPUT_PLACEHOLDER,
+    hint: STEP1_HINT,
+    copyLabel: COPY_TO_CLIPBOARD_LABEL,
+  };
   return {
     title,
-    requestInputPrompt: REQUEST_INPUT_PROMPT,
-    requestInputPlaceholder: REQUEST_INPUT_PLACEHOLDER,
+    requestInputPrompt: copy.prompt,
+    requestInputPlaceholder: copy.placeholder,
     step1Indicator: STEP1_INDICATOR,
-    step1Hint: STEP1_HINT,
+    step1Hint: copy.hint,
     executableUnavailable,
     executableUnavailableWarning: EXECUTABLE_UNAVAILABLE_WARNING,
     resolveBadgerLabel: RESOLVE_BADGER_LABEL,
-    copyToClipboardLabel: COPY_TO_CLIPBOARD_LABEL,
+    copyToClipboardLabel: copy.copyLabel,
     step1CancelLabel: HANDOFF_CANCEL_LABEL,
     moreCopyActionsLabel: "More copy actions",
     moreCopyActionsTitle: "Copy and open AI chat",

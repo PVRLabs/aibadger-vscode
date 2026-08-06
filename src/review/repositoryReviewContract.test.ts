@@ -7,7 +7,6 @@ import {
   COPY_ALL_CHANGES_FOR_REVIEW_COMMAND,
   COPY_ALL_CHANGES_FOR_REVIEW_TITLE,
   DEEP_REVIEW_COMMAND,
-  DEEP_REVIEW_PLACEHOLDER_MESSAGE,
   DEEP_REVIEW_TITLE,
   EXPLORER_SELECTION_MENU,
   REPOSITORY_REVIEW_CONTRACT,
@@ -32,8 +31,7 @@ suite("repository review action contract", () => {
     assert.equal(REPOSITORY_REVIEW_CONTRACT.assisted.icon, BADGER_ACTION_ICON);
     assert.equal(REPOSITORY_REVIEW_CONTRACT.direct.requiresBadger, false);
     assert.equal(REPOSITORY_REVIEW_CONTRACT.assisted.requiresBadger, true);
-    assert.equal(REPOSITORY_REVIEW_CONTRACT.assisted.initialState, "placeholder");
-    assert.equal(DEEP_REVIEW_PLACEHOLDER_MESSAGE, "Deep Review is not implemented yet.");
+    assert.equal(REPOSITORY_REVIEW_CONTRACT.assisted.initialState, "guidance");
   });
 
   test("resolves the clicked SourceControl repository without fallbacks", () => {

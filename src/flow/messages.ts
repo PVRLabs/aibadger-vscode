@@ -3,6 +3,16 @@
 /** Shared wizard / dialog chrome. */
 export const ASK_DIALOG_TITLE = "AI Badger";
 
+/** Deep Review uses the same Ask webview with review-specific first-step copy. */
+export const DEEP_REVIEW_DIALOG_TITLE = "AI Badger: Deep Review";
+export const DEEP_REVIEW_REQUEST_PROMPT =
+  "How should Badger review these changes?";
+export const DEEP_REVIEW_REQUEST_PLACEHOLDER =
+  "e.g. Focus on correctness, edge cases, regressions, and unintended behavior";
+export const DEEP_REVIEW_STEP1_HINT =
+  "Optional guidance. Badger will inspect this repository only after you explicitly copy the review prompt.";
+export const DEEP_REVIEW_COPY_LABEL = "Copy Review Prompt";
+
 /** @deprecated Prefer ASK_DIALOG_TITLE — kept as alias for existing call sites. */
 export const REQUEST_INPUT_TITLE = ASK_DIALOG_TITLE;
 

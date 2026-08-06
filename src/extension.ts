@@ -18,6 +18,8 @@ import {
 import { runAsk } from "./flow/runAsk";
 import { resolveAskFileSelection } from "./flow/askSelection";
 import { createVscodeRunAskUi } from "./flow/vscodeUi";
+import { showDeepReviewWizard } from "./flow/askWizard";
+import { orderProviders, toMenuItems } from "./flow/providers";
 import { createVscodeResolveDeps } from "./scope/vscodeDeps";
 import {
   createReviewSelectedChangesSelectionDeps,
@@ -26,11 +28,14 @@ import {
 } from "./context/reviewSelectedChanges";
 import {
   copyAllChangesForReview,
-  showDeepReviewPlaceholder,
+  REPOSITORY_REVIEW_AMBIGUOUS_TARGET_MESSAGE,
+  REPOSITORY_REVIEW_INVALID_TARGET_MESSAGE,
+  resolveRepositoryReviewCommandTarget,
 } from "./context/repositoryReviewCommands";
 import {
   COPY_ALL_CHANGES_FOR_REVIEW_COMMAND,
   DEEP_REVIEW_COMMAND,
+  resolveRepositoryReviewScope,
 } from "./review/repositoryReviewContract";
 
 const INSTALLATION_INSTRUCTIONS_URL =
@@ -170,9 +175,33 @@ export function activate(
     ),
     vscode.commands.registerCommand(
       DEEP_REVIEW_COMMAND,
-      async () => {
-        showDeepReviewPlaceholder((message) => {
-          void vscode.window.showInformationMessage(message);
+      async (sourceControl?: vscode.SourceControl) => {
+        const target = await resolveRepositoryActionTarget(sourceControl);
+        const resolved = resolveRepositoryReviewCommandTarget(
+          target.target,
+          target.repositories
+        );
+        const scope = resolveRepositoryReviewScope(resolved);
+        if (!scope) {
+          void vscode.window.showErrorMessage(
+            sourceControl === undefined && target.repositories.length > 0
+              ? REPOSITORY_REVIEW_AMBIGUOUS_TARGET_MESSAGE
+              : REPOSITORY_REVIEW_INVALID_TARGET_MESSAGE
+          );
+          return;
+        }
+
+        // Chunk 4.2 only opens the reusable guidance surface. Generation is
+        // intentionally wired in the next chunk after explicit Copy.
+        await showDeepReviewWizard({
+          extensionUri: context.extensionUri,
+          chatProviders: toMenuItems(orderProviders(undefined)),
+          onPreparePrompt: async () => ({
+            ok: false,
+            message: `Deep Review is not ready for ${scope.repositoryId}.`,
+          }),
+          validateSelectors: () => undefined,
+          onCopyRequestedFiles: async () => undefined,
         });
       }
     )

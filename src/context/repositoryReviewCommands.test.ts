@@ -3,7 +3,6 @@ import {
   copyAllChangesForReview,
   REPOSITORY_REVIEW_INVALID_TARGET_MESSAGE,
   REPOSITORY_REVIEW_NO_CHANGE_MESSAGE,
-  showDeepReviewPlaceholder,
 } from "./repositoryReviewCommands";
 
 function target() {
@@ -65,9 +64,4 @@ suite("repository review commands", () => {
     assert.equal(errors.at(-1), REPOSITORY_REVIEW_NO_CHANGE_MESSAGE);
   });
 
-  test("Deep Review is exactly a notification with no other work", () => {
-    const messages: string[] = [];
-    showDeepReviewPlaceholder((message) => messages.push(message));
-    assert.deepEqual(messages, ["Deep Review is not implemented yet."]);
-  });
 });

@@ -40,11 +40,17 @@ import * as os from "os";
 import * as path from "path";
 import type {
   BadgerClient,
+  BadgerReviewClient,
   ExtractPromptResult,
   ExtractRequest,
   GeneratePromptResult,
+  GeneratePromptFailure,
   PromptRequest,
   PromptFocus,
+  ReviewCapabilityResult,
+  ReviewContextRequest,
+  ReviewContinuationRequest,
+  ReviewMode,
 } from "./types";
 
 /** Fixed MVP focus (no focus picker). Real API supports `code` | `design`. */
@@ -55,6 +61,13 @@ export const PROMPT_API_ARGS = ["api", "prompt"] as const;
 
 /** Subcommand + operation for extract / Prompt 2. */
 export const EXTRACT_API_ARGS = ["api", "extract"] as const;
+
+export const REVIEW_CONTEXT_API_ARGS = ["api", "review-context"] as const;
+export const REVIEW_CONTINUATION_API_ARGS = [
+  "api",
+  "review-continuation",
+] as const;
+export const MAX_REVIEW_INPUT_BYTES = 1024 * 1024;
 
 /**
  * Goal files cannot be empty after strip. Used only on the wire when the
@@ -77,7 +90,8 @@ export type RunProcessError = {
 
 export type RunProcess = (
   executable: string,
-  args: readonly string[]
+  args: readonly string[],
+  options?: { signal?: AbortSignal }
 ) => Promise<RunProcessResult | { error: RunProcessError }>;
 
 export type BadgerCliClientOptions = {
@@ -149,6 +163,66 @@ export function buildExtractArgs(
   ];
 }
 
+function appendReviewLimits(
+  args: string[],
+  maxPayloadBytes?: number,
+  maxFileBytes?: number
+): void {
+  if (maxPayloadBytes !== undefined) {
+    args.push("--max-payload-bytes", String(maxPayloadBytes));
+  }
+  if (maxFileBytes !== undefined) {
+    args.push("--max-file-bytes", String(maxFileBytes));
+  }
+}
+
+export function buildReviewContextArgs(
+  repositoryRoot: string,
+  mode: ReviewMode,
+  options: {
+    ref?: string;
+    guidanceFile?: string;
+    pathsFile?: string;
+    maxPayloadBytes?: number;
+    maxFileBytes?: number;
+  } = {}
+): string[] {
+  const args = [
+    ...REVIEW_CONTEXT_API_ARGS,
+    "--root",
+    repositoryRoot,
+    "--mode",
+    mode,
+  ];
+  if (options.ref !== undefined) {
+    args.push("--ref", options.ref);
+  }
+  if (options.guidanceFile !== undefined) {
+    args.push("--input", options.guidanceFile);
+  }
+  if (options.pathsFile !== undefined) {
+    args.push("--paths-file", options.pathsFile);
+  }
+  appendReviewLimits(args, options.maxPayloadBytes, options.maxFileBytes);
+  return args;
+}
+
+export function buildReviewContinuationArgs(
+  repositoryRoot: string,
+  selectorFile: string,
+  options: { maxPayloadBytes?: number; maxFileBytes?: number } = {}
+): string[] {
+  const args = [
+    ...REVIEW_CONTINUATION_API_ARGS,
+    "--root",
+    repositoryRoot,
+    "--input",
+    selectorFile,
+  ];
+  appendReviewLimits(args, options.maxPayloadBytes, options.maxFileBytes);
+  return args;
+}
+
 /** Goal text written to temp files; blank UI goals use a wire placeholder. */
 export function goalTextForWire(goal: string): string {
   return goal.trim() === "" ? BLANK_GOAL_WIRE_PLACEHOLDER : goal;
@@ -156,11 +230,12 @@ export function goalTextForWire(goal: string): string {
 
 /** Default process runner: spawn with piped stdio, no shell. */
 export function createSpawnRunProcess(): RunProcess {
-  return (executable, args) =>
+  return (executable, args, options) =>
     new Promise((resolve) => {
       const child = spawn(executable, [...args], {
         shell: false,
         stdio: ["ignore", "pipe", "pipe"],
+        signal: options?.signal,
       });
 
       let stdout = "";
@@ -221,7 +296,7 @@ function tempPath(tmpDir: string, label: string): string {
  */
 export function createBadgerCliClient(
   options: BadgerCliClientOptions
-): BadgerClient {
+): BadgerClient & BadgerReviewClient {
   const runProcess = options.runProcess ?? createSpawnRunProcess();
   const tmpDir = options.tmpDir ?? os.tmpdir();
   const scriptArgs = options.scriptArgs ?? [];
@@ -230,8 +305,28 @@ export function createBadgerCliClient(
   type TempInput = { label: string; contents: string };
   const runOperation = async (
     inputs: readonly TempInput[],
-    buildArgs: (paths: readonly string[]) => readonly string[]
+    buildArgs: (paths: readonly string[]) => readonly string[],
+    operationOptions: {
+      signal?: AbortSignal;
+      maxInputBytes?: number;
+    } = {}
   ): Promise<GeneratePromptResult> => {
+    const { signal, maxInputBytes } = operationOptions;
+    if (signal?.aborted) {
+      return cancelledResult();
+    }
+    for (const input of inputs) {
+      if (
+        maxInputBytes !== undefined &&
+        Buffer.byteLength(input.contents, "utf8") > maxInputBytes
+      ) {
+        return {
+          ok: false,
+          kind: "generationFailed",
+          message: `Could not prepare input: ${input.label} exceeds the 1 MiB limit.`,
+        };
+      }
+    }
     const paths = inputs.map((input) => tempPath(tmpDir, input.label));
     try {
       try {
@@ -252,10 +347,11 @@ export function createBadgerCliClient(
 
       let outcome: Awaited<ReturnType<RunProcess>>;
       try {
-        outcome = await runProcess(options.executable, [
-          ...scriptArgs,
-          ...buildArgs(paths),
-        ]);
+        outcome = await runProcess(
+          options.executable,
+          [...scriptArgs, ...buildArgs(paths)],
+          { signal }
+        );
       } catch (error) {
         const message =
           error instanceof Error ? error.message : "process runner failed";
@@ -266,6 +362,9 @@ export function createBadgerCliClient(
         };
       }
       if ("error" in outcome) {
+        if (signal?.aborted || outcome.error.code === "ABORT_ERR") {
+          return cancelledResult();
+        }
         return mapSpawnError(outcome.error, options.executable);
       }
       return mapProcessOutcome(outcome);
@@ -310,13 +409,181 @@ export function createBadgerCliClient(
           )
       );
     },
+
+    async reviewCapabilities(): Promise<ReviewCapabilityResult> {
+      return probeReviewApiCapabilities(
+        options.executable,
+        runProcess,
+        scriptArgs
+      );
+    },
+
+    async reviewContext(
+      request: ReviewContextRequest
+    ): Promise<GeneratePromptResult> {
+      const inputs: TempInput[] = [];
+      let guidanceIndex: number | undefined;
+      let pathsIndex: number | undefined;
+      if (request.guidance !== undefined) {
+        guidanceIndex = inputs.push({
+          label: "review-guidance",
+          contents: request.guidance,
+        }) - 1;
+      }
+      if (request.selectedPaths !== undefined) {
+        pathsIndex = inputs.push({
+          label: "review-paths",
+          contents: JSON.stringify(request.selectedPaths),
+        }) - 1;
+      }
+      const result = await runOperation(
+        inputs,
+        (paths) =>
+          buildReviewContextArgs(
+            request.repositoryRoot,
+            request.mode ?? "default",
+            {
+              ref: request.ref,
+              guidanceFile:
+                guidanceIndex === undefined ? undefined : paths[guidanceIndex],
+              pathsFile: pathsIndex === undefined ? undefined : paths[pathsIndex],
+              maxPayloadBytes: request.maxPayloadBytes,
+              maxFileBytes: request.maxFileBytes,
+            }
+          ),
+        {
+          signal: request.signal,
+          maxInputBytes: MAX_REVIEW_INPUT_BYTES,
+        }
+      );
+      return redactFailure(result, [
+        request.repositoryRoot,
+        request.guidance,
+        ...(request.selectedPaths ?? []),
+      ]);
+    },
+
+    async reviewContinuation(
+      request: ReviewContinuationRequest
+    ): Promise<GeneratePromptResult> {
+      const result = await runOperation(
+        [{ label: "review-selectors", contents: request.selectors }],
+        ([selectorPath]) =>
+          buildReviewContinuationArgs(
+            request.repositoryRoot,
+            selectorPath,
+            {
+              maxPayloadBytes: request.maxPayloadBytes,
+              maxFileBytes: request.maxFileBytes,
+            }
+          ),
+        {
+          signal: request.signal,
+          maxInputBytes: MAX_REVIEW_INPUT_BYTES,
+        }
+      );
+      return redactFailure(result, [request.repositoryRoot, request.selectors]);
+    },
   };
+}
+
+function cancelledResult(): GeneratePromptResult {
+  return {
+    ok: false,
+    kind: "cancelled",
+    message: "Badger operation was cancelled.",
+  };
+}
+
+export async function probeReviewApiCapabilities(
+  executable: string,
+  runProcess: RunProcess = createSpawnRunProcess(),
+  scriptArgs: readonly string[] = []
+): Promise<ReviewCapabilityResult> {
+  let outcome: Awaited<ReturnType<RunProcess>>;
+  try {
+    outcome = await runProcess(executable, [...scriptArgs, "api", "--help"]);
+  } catch (error) {
+    const message = error instanceof Error ? error.message : "process runner failed";
+    return {
+      ok: false,
+      kind: "generationFailed",
+      message: sanitizeDiagnostic(`Could not run Badger: ${message}`),
+    };
+  }
+  if ("error" in outcome) {
+    return mapSpawnError(outcome.error, executable);
+  }
+  if (outcome.exitCode !== 0) {
+    const failure = mapProcessOutcome(outcome);
+    if (!failure.ok) {
+      return failure;
+    }
+    return {
+      ok: false,
+      kind: "malformedResult",
+      message: "Badger capability check returned an invalid result.",
+    };
+  }
+  const help = `${outcome.stdout}\n${outcome.stderr}`;
+  let reviewContext = /\breview-context\b/.test(help);
+  let reviewContinuation = /\breview-continuation\b/.test(help);
+  if (!reviewContext) {
+    reviewContext = await commandHelpSucceeds(
+      executable,
+      [...scriptArgs, ...REVIEW_CONTEXT_API_ARGS, "--help"],
+      runProcess
+    );
+  }
+  if (!reviewContinuation) {
+    reviewContinuation = await commandHelpSucceeds(
+      executable,
+      [...scriptArgs, ...REVIEW_CONTINUATION_API_ARGS, "--help"],
+      runProcess
+    );
+  }
+  return {
+    ok: true,
+    capabilities: {
+      reviewContext,
+      reviewContinuation,
+    },
+  };
+}
+
+async function commandHelpSucceeds(
+  executable: string,
+  args: readonly string[],
+  runProcess: RunProcess
+): Promise<boolean> {
+  try {
+    const outcome = await runProcess(executable, args);
+    return !("error" in outcome) && outcome.exitCode === 0;
+  } catch {
+    return false;
+  }
+}
+
+function redactFailure(
+  result: GeneratePromptResult,
+  sensitiveValues: readonly (string | undefined)[]
+): GeneratePromptResult {
+  if (result.ok) {
+    return result;
+  }
+  let message = result.message;
+  for (const value of sensitiveValues) {
+    if (value) {
+      message = message.split(value).join("[redacted]");
+    }
+  }
+  return { ...result, message };
 }
 
 function mapSpawnError(
   error: RunProcessError,
   executable: string
-): GeneratePromptResult {
+): GeneratePromptFailure {
   if (error.code === "ENOENT") {
     return {
       ok: false,

@@ -39,7 +39,8 @@ export type ClientFailureKind =
   | "generationFailed"
   | "executableUnavailable"
   | "unsupportedApi"
-  | "malformedResult";
+  | "malformedResult"
+  | "cancelled";
 
 export type GeneratePromptSuccess = {
   ok: true;
@@ -79,4 +80,48 @@ export type ExtractPromptResult = ExtractPromptSuccess | ExtractPromptFailure;
 export interface BadgerClient {
   generatePrompt(request: PromptRequest): Promise<GeneratePromptResult>;
   extractPrompt(request: ExtractRequest): Promise<ExtractPromptResult>;
+}
+
+export type ReviewMode = "default" | "staged" | "branch" | "commit";
+
+export type ReviewContextRequest = {
+  /** Absolute root of exactly one Git repository. */
+  repositoryRoot: string;
+  mode?: ReviewMode;
+  /** Revision required by branch and commit modes. */
+  ref?: string;
+  /** Optional editable user guidance, transported through a UTF-8 temp file. */
+  guidance?: string;
+  /** Literal repository-relative paths, transported as a JSON array. */
+  selectedPaths?: readonly string[];
+  maxPayloadBytes?: number;
+  maxFileBytes?: number;
+  signal?: AbortSignal;
+};
+
+export type ReviewContinuationRequest = {
+  repositoryRoot: string;
+  /** Selector-only FILE/PREFIX/NEAR input. */
+  selectors: string;
+  maxPayloadBytes?: number;
+  maxFileBytes?: number;
+  signal?: AbortSignal;
+};
+
+export type ReviewApiCapabilities = {
+  reviewContext: boolean;
+  reviewContinuation: boolean;
+};
+
+export type ReviewCapabilityResult =
+  | { ok: true; capabilities: ReviewApiCapabilities }
+  | GeneratePromptFailure;
+
+/** Badger-backed operations used by the future Deep Review controller. */
+export interface BadgerReviewClient {
+  reviewCapabilities(): Promise<ReviewCapabilityResult>;
+  reviewContext(request: ReviewContextRequest): Promise<GeneratePromptResult>;
+  reviewContinuation(
+    request: ReviewContinuationRequest
+  ): Promise<GeneratePromptResult>;
 }

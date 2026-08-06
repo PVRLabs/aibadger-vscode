@@ -1,9 +1,13 @@
 import type {
   BadgerClient,
+  BadgerReviewClient,
   ExtractPromptResult,
   ExtractRequest,
   GeneratePromptResult,
   PromptRequest,
+  ReviewCapabilityResult,
+  ReviewContextRequest,
+  ReviewContinuationRequest,
 } from "./types";
 
 export type ExecutableRecoveryOptions = {
@@ -66,6 +70,57 @@ export function createExecutableRecoveringClient(
     },
     extractPrompt(request: ExtractRequest): Promise<ExtractPromptResult> {
       return recover((client) => client.extractPrompt(request));
+    },
+  };
+}
+
+export type ReviewExecutableRecoveryOptions = {
+  createClient: (executable?: string) => BadgerReviewClient;
+  recoverExecutable: () => Promise<string | undefined>;
+  recoverUnsupportedApi?: () => Promise<string | undefined>;
+};
+
+/** Apply the same one-retry executable recovery policy to Deep Review calls. */
+export function createReviewExecutableRecoveringClient(
+  options: ReviewExecutableRecoveryOptions
+): BadgerReviewClient {
+  let chosenExecutable: string | undefined;
+
+  async function recover<
+    T extends GeneratePromptResult | ReviewCapabilityResult,
+  >(run: (client: BadgerReviewClient) => Promise<T>): Promise<T> {
+    const result = await run(options.createClient(chosenExecutable));
+    if (result.ok) {
+      return result;
+    }
+    const recovery =
+      result.kind === "executableUnavailable"
+        ? options.recoverExecutable
+        : result.kind === "unsupportedApi"
+          ? options.recoverUnsupportedApi
+          : undefined;
+    if (!recovery) {
+      return result;
+    }
+    const executable = await recovery();
+    if (!executable) {
+      return result;
+    }
+    chosenExecutable = executable;
+    return run(options.createClient(executable));
+  }
+
+  return {
+    reviewCapabilities(): Promise<ReviewCapabilityResult> {
+      return recover((client) => client.reviewCapabilities());
+    },
+    reviewContext(request: ReviewContextRequest): Promise<GeneratePromptResult> {
+      return recover((client) => client.reviewContext(request));
+    },
+    reviewContinuation(
+      request: ReviewContinuationRequest
+    ): Promise<GeneratePromptResult> {
+      return recover((client) => client.reviewContinuation(request));
     },
   };
 }

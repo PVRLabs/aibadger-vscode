@@ -6,12 +6,17 @@ import {
   BLANK_GOAL_WIRE_PLACEHOLDER,
   buildExtractArgs,
   buildPromptArgs,
+  buildReviewContextArgs,
+  buildReviewContinuationArgs,
   canStartBadgerExecutable,
   createBadgerCliClient,
   EXTRACT_API_ARGS,
   goalTextForWire,
   PROMPT_API_ARGS,
   PROMPT_FOCUS,
+  probeReviewApiCapabilities,
+  REVIEW_CONTEXT_API_ARGS,
+  REVIEW_CONTINUATION_API_ARGS,
   type RunProcess,
   type RunProcessResult,
 } from "./cliClient";
@@ -132,6 +137,109 @@ suite("buildExtractArgs", () => {
       "/tmp/goal.txt",
     ]);
     assert.deepStrictEqual([...EXTRACT_API_ARGS], ["api", "extract"]);
+  });
+});
+
+suite("review API argv", () => {
+  test("builds complete review-context argv with explicit optional inputs", () => {
+    assert.deepStrictEqual(
+      buildReviewContextArgs("/repo", "branch", {
+        ref: "origin/main",
+        guidanceFile: "/tmp/guidance.txt",
+        pathsFile: "/tmp/paths.json",
+        maxPayloadBytes: 262144,
+        maxFileBytes: 32768,
+      }),
+      [
+        "api", "review-context", "--root", "/repo", "--mode", "branch",
+        "--ref", "origin/main", "--input", "/tmp/guidance.txt",
+        "--paths-file", "/tmp/paths.json", "--max-payload-bytes", "262144",
+        "--max-file-bytes", "32768",
+      ]
+    );
+    assert.deepStrictEqual([...REVIEW_CONTEXT_API_ARGS], ["api", "review-context"]);
+  });
+
+  test("omits absent review-context optional flags", () => {
+    assert.deepStrictEqual(buildReviewContextArgs("/repo", "default"), [
+      "api", "review-context", "--root", "/repo", "--mode", "default",
+    ]);
+  });
+
+  test("builds review-continuation argv and limits", () => {
+    assert.deepStrictEqual(
+      buildReviewContinuationArgs("/repo", "/tmp/selectors.txt", {
+        maxPayloadBytes: 8192,
+        maxFileBytes: 4096,
+      }),
+      [
+        "api", "review-continuation", "--root", "/repo", "--input",
+        "/tmp/selectors.txt", "--max-payload-bytes", "8192",
+        "--max-file-bytes", "4096",
+      ]
+    );
+    assert.deepStrictEqual([...REVIEW_CONTINUATION_API_ARGS], [
+      "api", "review-continuation",
+    ]);
+  });
+});
+
+suite("review API capabilities", () => {
+  test("detects review operations from api help without a version threshold", async () => {
+    const calls: string[][] = [];
+    const result = await probeReviewApiCapabilities("badger", async (_exe, args) => {
+      calls.push([...args]);
+      return {
+        exitCode: 0,
+        stdout: "review-context  initial review\nreview-continuation  supplemental context\n",
+        stderr: "",
+      };
+    });
+    assert.deepStrictEqual(calls, [["api", "--help"]]);
+    assert.deepStrictEqual(result, {
+      ok: true,
+      capabilities: { reviewContext: true, reviewContinuation: true },
+    });
+  });
+
+  test("reports absent capabilities and maps missing executable", async () => {
+    const absent = await probeReviewApiCapabilities("badger", async (_exe, args) => ({
+      exitCode: args.includes("review-context") || args.includes("review-continuation") ? 2 : 0,
+      stdout: args.length === 2 ? "topology\nprompt\nextract\n" : "",
+      stderr: "",
+    }));
+    assert.deepStrictEqual(absent, {
+      ok: true,
+      capabilities: { reviewContext: false, reviewContinuation: false },
+    });
+    const missing = await probeReviewApiCapabilities("badger", async () => ({
+      error: { code: "ENOENT", message: "not found" },
+    }));
+    assert.strictEqual(missing.ok, false);
+    if (!missing.ok) {
+      assert.strictEqual(missing.kind, "executableUnavailable");
+    }
+  });
+
+  test("falls back to command-specific help when aggregate help is incomplete", async () => {
+    const calls: string[][] = [];
+    const result = await probeReviewApiCapabilities("badger", async (_exe, args) => {
+      calls.push([...args]);
+      return {
+        exitCode: args.length === 2 || args.includes("review-context") ? 0 : 2,
+        stdout: args.includes("review-context") ? "Usage: review-context" : "",
+        stderr: "",
+      };
+    });
+    assert.deepStrictEqual(result, {
+      ok: true,
+      capabilities: { reviewContext: true, reviewContinuation: false },
+    });
+    assert.deepStrictEqual(calls, [
+      ["api", "--help"],
+      ["api", "review-context", "--help"],
+      ["api", "review-continuation", "--help"],
+    ]);
   });
 });
 
@@ -302,6 +410,29 @@ suite("createBadgerCliClient against stubbed badger API", () => {
     assert.strictEqual(writtenGoal, BLANK_GOAL_WIRE_PLACEHOLDER);
     // Still uses api prompt, not topology.
     // (runProcess sees full args via the written file path check above)
+  });
+
+  test("does not impose the review input limit on Prompt 1 goals", async () => {
+    const oversizedForReview = "g".repeat(1024 * 1024 + 1);
+    let writtenBytes = 0;
+    const client = createBadgerCliClient({
+      executable: STUB_EXECUTABLE,
+      runProcess: async (_exe, args) => {
+        writtenBytes = Buffer.byteLength(
+          await fs.readFile(args[args.indexOf("--input") + 1], "utf8"),
+          "utf8"
+        );
+        return { exitCode: 0, stdout: PROMPT1_STDOUT, stderr: "" };
+      },
+    });
+
+    const result = await client.generatePrompt({
+      ...baseRequest,
+      request: oversizedForReview,
+    });
+
+    assert.strictEqual(result.ok, true);
+    assert.strictEqual(writtenBytes, Buffer.byteLength(oversizedForReview, "utf8"));
   });
 
   test("missing input style failure maps to generationFailed", async () => {
@@ -585,6 +716,29 @@ suite("createBadgerCliClient extractPrompt against stubbed badger API", () => {
     await fs.rmdir(tmpDir);
   });
 
+  test("does not impose the review input limit on extraction selectors", async () => {
+    const oversizedForReview = `FILE:${"s".repeat(1024 * 1024)}\n`;
+    let writtenBytes = 0;
+    const client = createBadgerCliClient({
+      executable: STUB_EXECUTABLE,
+      runProcess: async (_exe, args) => {
+        writtenBytes = Buffer.byteLength(
+          await fs.readFile(args[args.indexOf("--input") + 1], "utf8"),
+          "utf8"
+        );
+        return { exitCode: 0, stdout: PROMPT2_STDOUT, stderr: "" };
+      },
+    });
+
+    const result = await client.extractPrompt({
+      ...extractRequest,
+      selectors: oversizedForReview,
+    });
+
+    assert.strictEqual(result.ok, true);
+    assert.strictEqual(writtenBytes, Buffer.byteLength(oversizedForReview, "utf8"));
+  });
+
   test("second input write failure cleans every allocated temp path", async () => {
     const writes: string[] = [];
     const unlinks: string[] = [];
@@ -670,5 +824,190 @@ suite("createBadgerCliClient extractPrompt against stubbed badger API", () => {
       focus: "design",
     });
     assertRootNoScope(args, "/secret/root", "secret/scope");
+  });
+});
+
+suite("createBadgerCliClient Deep Review operations", () => {
+  test("transports UTF-8 guidance and literal selected paths, then cleans temps", async () => {
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "aibadger-review-"));
+    let guidance = "";
+    let selectedPaths: unknown;
+    let capturedArgs: string[] = [];
+    const client = createBadgerCliClient({
+      executable: STUB_EXECUTABLE,
+      tmpDir,
+      runProcess: async (_exe, args) => {
+        capturedArgs = [...args];
+        guidance = await fs.readFile(args[args.indexOf("--input") + 1], "utf8");
+        selectedPaths = JSON.parse(
+          await fs.readFile(args[args.indexOf("--paths-file") + 1], "utf8")
+        );
+        return { exitCode: 0, stdout: "standalone review\n", stderr: "" };
+      },
+    });
+
+    const result = await client.reviewContext({
+      repositoryRoot: "/repo/秘密",
+      mode: "commit",
+      ref: "HEAD~1",
+      guidance: "Focus on Unicode: 🦡",
+      selectedPaths: ["src/space name.ts", "src/雪.ts", "--literal"],
+      maxPayloadBytes: 262144,
+      maxFileBytes: 32768,
+    });
+
+    assert.deepStrictEqual(result, { ok: true, prompt: "standalone review\n" });
+    assert.strictEqual(guidance, "Focus on Unicode: 🦡");
+    assert.deepStrictEqual(selectedPaths, [
+      "src/space name.ts", "src/雪.ts", "--literal",
+    ]);
+    assert.deepStrictEqual(capturedArgs.slice(0, 6), [
+      "api", "review-context", "--root", "/repo/秘密", "--mode", "commit",
+    ]);
+    assert.deepStrictEqual(
+      capturedArgs.slice(capturedArgs.indexOf("--ref"), capturedArgs.indexOf("--ref") + 2),
+      ["--ref", "HEAD~1"]
+    );
+    assert.deepStrictEqual(await fs.readdir(tmpDir), []);
+    await fs.rmdir(tmpDir);
+  });
+
+  test("omits optional review-context files and flags", async () => {
+    let args: string[] = [];
+    const client = createBadgerCliClient({
+      executable: STUB_EXECUTABLE,
+      runProcess: async (_exe, actual) => {
+        args = [...actual];
+        return { exitCode: 0, stdout: "review", stderr: "" };
+      },
+    });
+    const result = await client.reviewContext({ repositoryRoot: "/repo" });
+    assert.strictEqual(result.ok, true);
+    assert.deepStrictEqual(args, [
+      "api", "review-context", "--root", "/repo", "--mode", "default",
+    ]);
+  });
+
+  test("transports continuation selectors, limits, and cleans the temp file", async () => {
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "aibadger-cont-"));
+    let selectors = "";
+    let args: string[] = [];
+    const client = createBadgerCliClient({
+      executable: STUB_EXECUTABLE,
+      tmpDir,
+      runProcess: async (_exe, actual) => {
+        args = [...actual];
+        selectors = await fs.readFile(actual[actual.indexOf("--input") + 1], "utf8");
+        return { exitCode: 0, stdout: "supplemental\n", stderr: "warning\n" };
+      },
+    });
+    const result = await client.reviewContinuation({
+      repositoryRoot: "/repo",
+      selectors: "FILE:src/雪.ts\nNEAR:src/a.ts#run",
+      maxPayloadBytes: 65536,
+      maxFileBytes: 16384,
+    });
+    assert.deepStrictEqual(result, { ok: true, prompt: "supplemental\n" });
+    assert.strictEqual(selectors, "FILE:src/雪.ts\nNEAR:src/a.ts#run");
+    assert.ok(args.includes("review-continuation"));
+    assert.ok(args.includes("65536"));
+    assert.ok(args.includes("16384"));
+    assert.deepStrictEqual(await fs.readdir(tmpDir), []);
+    await fs.rmdir(tmpDir);
+  });
+
+  test("maps nonzero review failure without leaking content-bearing inputs", async () => {
+    const guidance = "secret review guidance";
+    const client = createBadgerCliClient({
+      executable: STUB_EXECUTABLE,
+      runProcess: async () => ({
+        exitCode: 1,
+        stdout: "",
+        stderr: "Error: no reviewable changes\n",
+      }),
+    });
+    const result = await client.reviewContext({
+      repositoryRoot: "/secret/root",
+      guidance,
+      selectedPaths: ["secret/file.ts"],
+    });
+    assert.strictEqual(result.ok, false);
+    if (!result.ok) {
+      assert.strictEqual(result.kind, "generationFailed");
+      assert.ok(result.message.includes("no reviewable changes"));
+      assert.ok(!result.message.includes(guidance));
+      assert.ok(!result.message.includes("/secret/root"));
+      assert.ok(!result.message.includes("secret/file.ts"));
+      assert.ok(!result.message.includes("/secret/root"));
+    }
+  });
+
+  test("redacts repository roots and selected paths echoed by Badger", async () => {
+    const client = createBadgerCliClient({
+      executable: STUB_EXECUTABLE,
+      runProcess: async () => ({
+        exitCode: 1,
+        stdout: "",
+        stderr: "Error: /secret/root rejected secret/file.ts\n",
+      }),
+    });
+    const result = await client.reviewContext({
+      repositoryRoot: "/secret/root",
+      selectedPaths: ["secret/file.ts"],
+    });
+    assert.strictEqual(result.ok, false);
+    if (!result.ok) {
+      assert.ok(result.message.includes("[redacted]"));
+      assert.ok(!result.message.includes("/secret/root"));
+      assert.ok(!result.message.includes("secret/file.ts"));
+    }
+  });
+
+  test("cancellation reaches the runner and cleans review inputs", async () => {
+    const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "aibadger-cancel-"));
+    const controller = new AbortController();
+    let guidancePath = "";
+    const client = createBadgerCliClient({
+      executable: STUB_EXECUTABLE,
+      tmpDir,
+      runProcess: async (_exe, args, options) => {
+        guidancePath = args[args.indexOf("--input") + 1];
+        assert.strictEqual(options?.signal, controller.signal);
+        controller.abort();
+        return { error: { code: "ABORT_ERR", message: "aborted" } };
+      },
+    });
+    const result = await client.reviewContext({
+      repositoryRoot: "/repo",
+      guidance: "cancel me",
+      signal: controller.signal,
+    });
+    assert.strictEqual(result.ok, false);
+    if (!result.ok) {
+      assert.strictEqual(result.kind, "cancelled");
+    }
+    await assert.rejects(() => fs.access(guidancePath), /ENOENT/);
+    assert.deepStrictEqual(await fs.readdir(tmpDir), []);
+    await fs.rmdir(tmpDir);
+  });
+
+  test("rejects oversized caller-owned review input before process launch", async () => {
+    let calls = 0;
+    const client = createBadgerCliClient({
+      executable: STUB_EXECUTABLE,
+      runProcess: async () => {
+        calls += 1;
+        return { exitCode: 0, stdout: "unexpected", stderr: "" };
+      },
+    });
+    const result = await client.reviewContext({
+      repositoryRoot: "/repo",
+      guidance: "x".repeat(1024 * 1024 + 1),
+    });
+    assert.strictEqual(result.ok, false);
+    assert.strictEqual(calls, 0);
+    if (!result.ok) {
+      assert.ok(result.message.includes("1 MiB"));
+    }
   });
 });

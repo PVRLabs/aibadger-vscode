@@ -1,6 +1,9 @@
 import * as assert from "assert";
-import type { BadgerClient, PromptRequest } from "./types";
-import { createExecutableRecoveringClient } from "./executableRecovery";
+import type { BadgerClient, BadgerReviewClient, PromptRequest } from "./types";
+import {
+  createExecutableRecoveringClient,
+  createReviewExecutableRecoveringClient,
+} from "./executableRecovery";
 
 const request: PromptRequest = {
   projectRoot: "/workspace",
@@ -211,5 +214,87 @@ suite("executable recovery client", () => {
       "prompt:/opt/badger",
       "extract:/opt/badger",
     ]);
+  });
+});
+
+suite("Deep Review executable recovery client", () => {
+  function reviewClient(
+    executable: string | undefined,
+    calls: string[]
+  ): BadgerReviewClient {
+    const label = executable ?? "badger";
+    return {
+      async reviewCapabilities() {
+        calls.push(`capabilities:${label}`);
+        return executable
+          ? { ok: true, capabilities: { reviewContext: true, reviewContinuation: true } }
+          : {
+              ok: false,
+              kind: "executableUnavailable",
+              message: "Badger executable not found",
+            };
+      },
+      async reviewContext() {
+        calls.push(`context:${label}`);
+        return executable
+          ? { ok: true, prompt: "review" }
+          : {
+              ok: false,
+              kind: "executableUnavailable",
+              message: "Badger executable not found",
+            };
+      },
+      async reviewContinuation() {
+        calls.push(`continuation:${label}`);
+        return { ok: true, prompt: "supplemental" };
+      },
+    };
+  }
+
+  test("retries review capability and generation calls with one chosen executable", async () => {
+    const calls: string[] = [];
+    const client = createReviewExecutableRecoveringClient({
+      createClient: (executable) => reviewClient(executable, calls),
+      recoverExecutable: async () => "/opt/badger",
+    });
+    const capabilities = await client.reviewCapabilities();
+    const context = await client.reviewContext({ repositoryRoot: "/repo" });
+    const continuation = await client.reviewContinuation({
+      repositoryRoot: "/repo",
+      selectors: "FILE:README.md",
+    });
+    assert.strictEqual(capabilities.ok, true);
+    assert.deepStrictEqual(context, { ok: true, prompt: "review" });
+    assert.deepStrictEqual(continuation, { ok: true, prompt: "supplemental" });
+    assert.deepStrictEqual(calls, [
+      "capabilities:badger",
+      "capabilities:/opt/badger",
+      "context:/opt/badger",
+      "continuation:/opt/badger",
+    ]);
+  });
+
+  test("does not recover cancellation", async () => {
+    let recoveryCalls = 0;
+    const client = createReviewExecutableRecoveringClient({
+      createClient: () => ({
+        async reviewCapabilities() {
+          return { ok: true, capabilities: { reviewContext: true, reviewContinuation: true } };
+        },
+        async reviewContext() {
+          return { ok: false, kind: "cancelled", message: "cancelled" };
+        },
+        async reviewContinuation() {
+          return { ok: false, kind: "cancelled", message: "cancelled" };
+        },
+      }),
+      recoverExecutable: async () => {
+        recoveryCalls += 1;
+        return "/opt/badger";
+      },
+    });
+    const result = await client.reviewContext({ repositoryRoot: "/repo" });
+    assert.strictEqual(result.ok, false);
+    assert.strictEqual(recoveryCalls, 0);
   });
 });

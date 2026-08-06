@@ -297,4 +297,40 @@ suite("Deep Review executable recovery client", () => {
     assert.strictEqual(result.ok, false);
     assert.strictEqual(recoveryCalls, 0);
   });
+
+  test("recovers an installed executable that lacks review-context", async () => {
+    const calls: string[] = [];
+    const client = createReviewExecutableRecoveringClient({
+      createClient: (executable) => ({
+        async reviewCapabilities() {
+          const label = executable ?? "badger";
+          calls.push(`capabilities:${label}`);
+          return executable
+            ? { ok: true, capabilities: { reviewContext: true, reviewContinuation: true } }
+            : { ok: true, capabilities: { reviewContext: false, reviewContinuation: false } };
+        },
+        async reviewContext() {
+          return { ok: true, prompt: "review" };
+        },
+        async reviewContinuation() {
+          return { ok: true, prompt: "supplemental" };
+        },
+      }),
+      recoverExecutable: async () => {
+        throw new Error("unavailable recovery should not run");
+      },
+      recoverUnsupportedApi: async () => "/opt/new-badger",
+    });
+
+    const result = await client.reviewCapabilities();
+
+    assert.deepStrictEqual(result, {
+      ok: true,
+      capabilities: { reviewContext: true, reviewContinuation: true },
+    });
+    assert.deepStrictEqual(calls, [
+      "capabilities:badger",
+      "capabilities:/opt/new-badger",
+    ]);
+  });
 });

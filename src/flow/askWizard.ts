@@ -103,6 +103,10 @@ export type AskWizardOptions = {
     placeholder: string;
     hint: string;
     copyLabel: string;
+    /** Deep Review completes after the initial prompt; continuation is optional. */
+    completeAfterCopy?: boolean;
+    completionTitle?: string;
+    completionDescription?: string;
   };
 };
 
@@ -156,6 +160,7 @@ export function showAskWizard(
     const controller = createAskWizardController(
       {
         chatProviders,
+        completeAfterPrepare: options.firstStepCopy?.completeAfterCopy ?? false,
         onOpenExecutableRecovery: options.onOpenExecutableRecovery,
         onPreparePrompt: options.onPreparePrompt,
         validateSelectors: options.validateSelectors,
@@ -222,6 +227,10 @@ export function showDeepReviewWizard(
       placeholder: DEEP_REVIEW_REQUEST_PLACEHOLDER,
       hint: DEEP_REVIEW_STEP1_HINT,
       copyLabel: DEEP_REVIEW_COPY_LABEL,
+      completeAfterCopy: true,
+      completionTitle: "✓ Review prompt copied",
+      completionDescription:
+        "Paste it into an AI chat. The AI should report findings immediately; additional context can be requested when needed.",
     },
   });
 }
@@ -263,8 +272,10 @@ function createWizardConfig(
     handoffGuideLinkLabel: HANDOFF_GUIDE_LINK_LABEL,
     aiResponsePlaceholder: AI_RESPONSE_PLACEHOLDER,
     copyRequestedFilesLabel: COPY_REQUESTED_FILES_LABEL,
-    doneMessageTitle: NEXT_PROMPT_COPIED_TITLE,
-    doneMessageDescription: NEXT_PROMPT_COPIED_DESCRIPTION,
+    doneMessageTitle:
+      firstStepCopy?.completionTitle ?? NEXT_PROMPT_COPIED_TITLE,
+    doneMessageDescription:
+      firstStepCopy?.completionDescription ?? NEXT_PROMPT_COPIED_DESCRIPTION,
     completionNextStepsTitle: COMPLETION_NEXT_STEPS_TITLE,
     completionNextSteps: COMPLETION_NEXT_STEPS,
     doneHint: DONE_PANEL_HINT,

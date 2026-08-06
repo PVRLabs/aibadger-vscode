@@ -62,6 +62,24 @@ suite("AskWizardController", () => {
     ]);
   });
 
+  test("can complete after initial preparation for optional-continuation flows", async () => {
+    const harness = createHarness({ completeAfterPrepare: true });
+
+    await harness.send({
+      type: "step1Submit",
+      text: "  Review these changes  ",
+    });
+
+    assert.deepStrictEqual(harness.posted, [
+      { type: "busy", busy: true, step: 1 },
+      { type: "showDone" },
+      { type: "busy", busy: false, step: 1 },
+    ]);
+    assert.deepStrictEqual(harness.controller.resultOnDispose(), {
+      completedCopy: true,
+    });
+  });
+
   test("keeps prepare failures on step 1 and always clears busy", async () => {
     const harness = createHarness({
       onPreparePrompt: async () => ({ ok: false, message: "Badger failed" }),

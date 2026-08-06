@@ -3,12 +3,15 @@ import {
   canStartBadgerExecutable,
   createBadgerCliClient,
 } from "./client/cliClient";
-import { createExecutableRecoveringClient } from "./client/executableRecovery";
+import {
+  createExecutableRecoveringClient,
+  createReviewExecutableRecoveringClient,
+} from "./client/executableRecovery";
 import {
   EXECUTABLE_PATH_SETTING,
   resolveBadgerExecutable,
 } from "./client/resolveExecutable";
-import type { BadgerClient } from "./client/types";
+import type { BadgerClient, BadgerReviewClient } from "./client/types";
 import {
   COPY_FILE_FOR_AI_COMMAND,
   COPY_FILES_FOR_AI_COMMAND,
@@ -20,6 +23,7 @@ import { resolveAskFileSelection } from "./flow/askSelection";
 import { createVscodeRunAskUi } from "./flow/vscodeUi";
 import { showDeepReviewWizard } from "./flow/askWizard";
 import { orderProviders, toMenuItems } from "./flow/providers";
+import { prepareDeepReviewPrompt } from "./context/deepReview";
 import { createVscodeResolveDeps } from "./scope/vscodeDeps";
 import {
   createReviewSelectedChangesSelectionDeps,
@@ -62,13 +66,17 @@ export {
  */
 export function activate(
   context: vscode.ExtensionContext,
-  client?: BadgerClient
+  client?: BadgerClient,
+  reviewClient?: BadgerReviewClient
 ): void {
   const runtime = client ? undefined : createDefaultBadgerRuntime();
   const deps = {
     scope: createVscodeResolveDeps(),
     ui: createVscodeRunAskUi(context.extensionUri, context),
     client: client ?? runtime!.client,
+    reviewClient:
+      reviewClient ??
+      (client && isBadgerReviewClient(client) ? client : runtime?.reviewClient),
     ...(runtime
       ? {
           executableRecovery: {
@@ -191,15 +199,39 @@ export function activate(
           return;
         }
 
-        // Chunk 4.2 only opens the reusable guidance surface. Generation is
-        // intentionally wired in the next chunk after explicit Copy.
+        const deepReviewClient = deps.reviewClient;
         await showDeepReviewWizard({
           extensionUri: context.extensionUri,
           chatProviders: toMenuItems(orderProviders(undefined)),
-          onPreparePrompt: async () => ({
-            ok: false,
-            message: `Deep Review is not ready for ${scope.repositoryId}.`,
-          }),
+          onPreparePrompt: async (guidance, action) => {
+            if (!deepReviewClient) {
+              return {
+                ok: false,
+                message:
+                  "Deep Review requires a Badger version with review support.",
+              };
+            }
+            return prepareDeepReviewPrompt(guidance, action, {
+              client: deepReviewClient,
+              repositoryRoot: scope.repositoryRoot,
+              writeClipboard: async (text) => {
+                await vscode.env.clipboard.writeText(text);
+              },
+              openExternal: async (url) => {
+                try {
+                  return await vscode.env.openExternal(vscode.Uri.parse(url));
+                } catch {
+                  return false;
+                }
+              },
+              showInformationMessage: (message) => {
+                void vscode.window.showInformationMessage(message);
+              },
+            });
+          },
+          ...(runtime
+            ? { onOpenExecutableRecovery: runtime.openRecovery }
+            : {}),
           validateSelectors: () => undefined,
           onCopyRequestedFiles: async () => undefined,
         });
@@ -281,6 +313,7 @@ export function deactivate(): void {
 
 type DefaultBadgerRuntime = {
   client: BadgerClient;
+  reviewClient: BadgerReviewClient;
   isExecutableAvailable: () => Promise<boolean>;
   openRecovery: () => Promise<boolean>;
 };
@@ -312,9 +345,18 @@ function createDefaultBadgerRuntime(): DefaultBadgerRuntime {
     recoverExecutable: recoverAndRemember,
     recoverUnsupportedApi: () => recoverAndRemember("unsupportedApi"),
   });
+  const reviewClient = createReviewExecutableRecoveringClient({
+    createClient: (executable) =>
+      createBadgerCliClient({
+        executable: executable ?? currentExecutable(),
+      }),
+    recoverExecutable: recoverAndRemember,
+    recoverUnsupportedApi: () => recoverAndRemember("unsupportedApi"),
+  });
 
   return {
     client,
+    reviewClient,
     isExecutableAvailable: () =>
       canStartBadgerExecutable(currentExecutable()),
     openRecovery: async () => {
@@ -324,6 +366,17 @@ function createDefaultBadgerRuntime(): DefaultBadgerRuntime {
         : false;
     },
   };
+}
+
+function isBadgerReviewClient(
+  value: BadgerClient
+): value is BadgerClient & BadgerReviewClient {
+  const candidate = value as Partial<BadgerReviewClient>;
+  return (
+    typeof candidate.reviewCapabilities === "function" &&
+    typeof candidate.reviewContext === "function" &&
+    typeof candidate.reviewContinuation === "function"
+  );
 }
 
 function createVscodeCopyFilesDeps(): CopyFilesDeps {

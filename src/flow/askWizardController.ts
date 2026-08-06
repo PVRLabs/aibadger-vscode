@@ -18,6 +18,8 @@ export type PreparePromptResult =
 
 export type AskWizardControllerOptions = {
   chatProviders: readonly ChatProviderMenuItem[];
+  /** Complete directly after Prompt 1 for workflows with optional continuation. */
+  completeAfterPrepare?: boolean;
   onOpenExecutableRecovery?: () => Promise<boolean>;
   onPreparePrompt: (
     goal: string,
@@ -134,6 +136,11 @@ export function createAskWizardController(
               type: "step1Error",
               message: prepareResult.message,
             });
+            return;
+          }
+          if (options.completeAfterPrepare) {
+            completedCopy = true;
+            deps.postMessage({ type: "showDone" });
             return;
           }
           const openedProviderName = openProviderId

@@ -111,8 +111,20 @@ export function createReviewExecutableRecoveringClient(
   }
 
   return {
-    reviewCapabilities(): Promise<ReviewCapabilityResult> {
-      return recover((client) => client.reviewCapabilities());
+    async reviewCapabilities(): Promise<ReviewCapabilityResult> {
+      const result = await recover((client) => client.reviewCapabilities());
+      if (result.ok && result.capabilities.reviewContext) {
+        return result;
+      }
+      if (!result.ok || !options.recoverUnsupportedApi) {
+        return result;
+      }
+      const executable = await options.recoverUnsupportedApi();
+      if (!executable) {
+        return result;
+      }
+      chosenExecutable = executable;
+      return options.createClient(executable).reviewCapabilities();
     },
     reviewContext(request: ReviewContextRequest): Promise<GeneratePromptResult> {
       return recover((client) => client.reviewContext(request));

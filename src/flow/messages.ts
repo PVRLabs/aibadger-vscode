@@ -60,6 +60,11 @@ export function effectiveGoal(goal: string): string {
 
 export const PROMPT_COPIED_MESSAGE = "AI Badger prompt copied to clipboard.";
 
+/** Deep Review's equivalent success toast, kept separate from Ask wording. */
+export function promptCopiedMessage(): string {
+  return "AI Badger review prompt copied to clipboard.";
+}
+
 /**
  * Step 1 split primary: generate Prompt 1, copy to clipboard, advance to paste-back.
  * Provider-neutral — open-chat shortcuts live only in the dropdown.

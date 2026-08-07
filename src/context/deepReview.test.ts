@@ -92,6 +92,25 @@ suite("prepareDeepReviewPrompt", () => {
     assert.deepEqual(failed.opened, []);
   });
 
+  test("keeps a clean repository on step 1 with an actionable message", async () => {
+    const clean = harness({
+      reviewContext: async () => ({
+        ok: false,
+        kind: "generationFailed",
+        message: "Badger failed (exit 1): Error: api review-context found no reviewable changes",
+      }),
+    });
+
+    const result = await prepareDeepReviewPrompt("review", undefined, clean.deps);
+
+    assert.deepEqual(result, {
+      ok: false,
+      message: "No reviewable changes found. Make or stage a change, then try Deep Review again.",
+    });
+    assert.deepEqual(clean.clipboard, []);
+    assert.deepEqual(clean.opened, []);
+  });
+
   test("preserves clipboard atomicity when writing fails", async () => {
     const h = harness();
     h.deps.writeClipboard = async () => {

@@ -39,7 +39,12 @@ export async function prepareDeepReviewPrompt(
     includeTopology: true,
   });
   if (!result.ok) {
-    return { ok: false, message: result.message };
+    return {
+      ok: false,
+      message: noReviewableChanges(result.message)
+        ? "No reviewable changes found. Make or stage a change, then try Deep Review again."
+        : result.message,
+    };
   }
 
   const providerId = action?.openProviderId;
@@ -79,6 +84,10 @@ export async function prepareDeepReviewPrompt(
     ok: true,
     ...(result.badgerVersion ? { badgerVersion: result.badgerVersion } : {}),
   };
+}
+
+function noReviewableChanges(message: string): boolean {
+  return /no reviewable changes/i.test(message);
 }
 
 /**

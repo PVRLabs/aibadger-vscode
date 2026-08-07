@@ -80,6 +80,56 @@ suite("AskWizardController", () => {
     });
   });
 
+  test("offers optional continuation after initial review copy", async () => {
+    const harness = createHarness({
+      completeAfterPrepare: true,
+      optionalSelectorContinuation: true,
+    });
+
+    await harness.send({ type: "step1Submit", text: "Review these changes" });
+
+    assert.deepStrictEqual(harness.posted, [
+      { type: "busy", busy: true, step: 1 },
+      { type: "showStep2" },
+      { type: "busy", busy: false, step: 1 },
+    ]);
+  });
+
+  test("final findings finish optional continuation without a copy call", async () => {
+    const harness = createHarness({ optionalSelectorContinuation: true });
+
+    await harness.send({
+      type: "step2Submit",
+      text: "No concrete issues were found.",
+    });
+
+    assert.deepStrictEqual(harness.copied, []);
+    assert.deepStrictEqual(harness.finished, [undefined]);
+  });
+
+  test("optional continuation rejects empty and mixed selector responses", async () => {
+    const harness = createHarness({
+      optionalSelectorContinuation: true,
+      validateSelectors: (text) =>
+        text.includes("finding") ? "Line 2: expected a selector." : undefined,
+    });
+
+    await harness.send({ type: "step2Submit", text: "   " });
+    await harness.send({
+      type: "step2Submit",
+      text: "FILE:a.go\nfinding: possible bug",
+    });
+
+    assert.deepStrictEqual(harness.copied, []);
+    assert.deepStrictEqual(harness.posted, [
+      {
+        type: "validationError",
+        message: "Paste the AI response, or close when the review is complete.",
+      },
+      { type: "validationError", message: "Line 2: expected a selector." },
+    ]);
+  });
+
   test("keeps prepare failures on step 1 and always clears busy", async () => {
     const harness = createHarness({
       onPreparePrompt: async () => ({ ok: false, message: "Badger failed" }),

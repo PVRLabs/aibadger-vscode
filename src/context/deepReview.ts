@@ -18,6 +18,11 @@ export type DeepReviewPreparationDeps = {
   showInformationMessage: (message: string) => void;
 };
 
+export type DeepReviewContinuationDeps = Pick<
+  DeepReviewPreparationDeps,
+  "client" | "repositoryRoot" | "writeClipboard" | "showInformationMessage"
+>;
+
 /**
  * Generate the initial repository-scoped review request after explicit user
  * consent. Badger owns repository inspection and prompt formatting; the
@@ -68,4 +73,33 @@ export async function prepareDeepReviewPrompt(
       : promptCopiedOpenFailedMessage(provider.name)
   );
   return { ok: true };
+}
+
+/**
+ * Request stateless supplemental review context. The initial prompt is not an
+ * input: Badger reads only the validated selectors and current repository.
+ */
+export async function continueDeepReview(
+  selectors: string,
+  deps: DeepReviewContinuationDeps
+): Promise<string | undefined> {
+  const result = await deps.client.reviewContinuation({
+    repositoryRoot: deps.repositoryRoot,
+    selectors,
+  });
+  if (!result.ok) {
+    return result.message;
+  }
+  if (result.prompt.trim() === "") {
+    return "Badger returned no usable supplemental review context.";
+  }
+  try {
+    await deps.writeClipboard(result.prompt);
+  } catch {
+    return "Could not write the supplemental review context to the clipboard.";
+  }
+  deps.showInformationMessage(
+    "Additional review context copied. Paste it into the same AI chat."
+  );
+  return undefined;
 }

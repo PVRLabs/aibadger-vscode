@@ -34,6 +34,7 @@ declare namespace AskWizardContract {
     handoffGuideLinkLabel: string;
     aiResponsePlaceholder: string;
     copyRequestedFilesLabel: string;
+    optionalSelectorContinuation?: boolean;
     doneMessageTitle: string;
     doneMessageDescription: string;
     completionNextStepsTitle: string;

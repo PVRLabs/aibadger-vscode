@@ -107,6 +107,12 @@ export type AskWizardOptions = {
     completeAfterCopy?: boolean;
     completionTitle?: string;
     completionDescription?: string;
+    optionalSelectorContinuation?: boolean;
+    step2Indicator?: string;
+    handoffHeadline?: string;
+    handoffInstruction?: string;
+    responsePlaceholder?: string;
+    continuationCopyLabel?: string;
   };
 };
 
@@ -161,6 +167,8 @@ export function showAskWizard(
       {
         chatProviders,
         completeAfterPrepare: options.firstStepCopy?.completeAfterCopy ?? false,
+        optionalSelectorContinuation:
+          options.firstStepCopy?.optionalSelectorContinuation ?? false,
         onOpenExecutableRecovery: options.onOpenExecutableRecovery,
         onPreparePrompt: options.onPreparePrompt,
         validateSelectors: options.validateSelectors,
@@ -228,9 +236,17 @@ export function showDeepReviewWizard(
       hint: DEEP_REVIEW_STEP1_HINT,
       copyLabel: DEEP_REVIEW_COPY_LABEL,
       completeAfterCopy: true,
-      completionTitle: "✓ Review prompt copied",
+      optionalSelectorContinuation: true,
+      step2Indicator: "Optional context",
+      handoffHeadline: "Review prompt copied.",
+      handoffInstruction:
+        "Paste the AI response below. Findings finish the flow without another Badger call; selector-only FILE, PREFIX, or NEAR lines copy additional context from the current filesystem, which may be newer than the initial review prompt.",
+      responsePlaceholder:
+        "Paste findings, or selector-only FILE: / PREFIX: / NEAR: lines",
+      continuationCopyLabel: "Continue Review",
+      completionTitle: "✓ Additional review context copied",
       completionDescription:
-        "Paste it into an AI chat. The AI should report findings immediately; additional context can be requested when needed.",
+        "Paste it into the same AI chat to continue the review.",
     },
   });
 }
@@ -261,17 +277,22 @@ function createWizardConfig(
     moreCopyActionsLabel: "More copy actions",
     moreCopyActionsTitle: "Copy and open AI chat",
     moreCopyActionsAriaLabel: "More copy actions",
-    step2Indicator: HANDOFF_STEP_INDICATOR,
-    handoffHeadline: HANDOFF_HEADLINE,
-    handoffInstruction: HANDOFF_INSTRUCTION,
+    step2Indicator: firstStepCopy?.step2Indicator ?? HANDOFF_STEP_INDICATOR,
+    handoffHeadline: firstStepCopy?.handoffHeadline ?? HANDOFF_HEADLINE,
+    handoffInstruction:
+      firstStepCopy?.handoffInstruction ?? HANDOFF_INSTRUCTION,
     prompt1SummaryTitle: PROMPT1_SUMMARY_TITLE,
     prompt1SummaryNote: PROMPT1_SUMMARY_NOTE,
     optionalGuideTitle: HANDOFF_OPTIONAL_GUIDE_TITLE,
     optionalGuide: HANDOFF_OPTIONAL_GUIDE,
     optionalGuideMediaLabel: HANDOFF_OPTIONAL_GUIDE_MEDIA_LABEL,
     handoffGuideLinkLabel: HANDOFF_GUIDE_LINK_LABEL,
-    aiResponsePlaceholder: AI_RESPONSE_PLACEHOLDER,
-    copyRequestedFilesLabel: COPY_REQUESTED_FILES_LABEL,
+    aiResponsePlaceholder:
+      firstStepCopy?.responsePlaceholder ?? AI_RESPONSE_PLACEHOLDER,
+    copyRequestedFilesLabel:
+      firstStepCopy?.continuationCopyLabel ?? COPY_REQUESTED_FILES_LABEL,
+    optionalSelectorContinuation:
+      firstStepCopy?.optionalSelectorContinuation ?? false,
     doneMessageTitle:
       firstStepCopy?.completionTitle ?? NEXT_PROMPT_COPIED_TITLE,
     doneMessageDescription:

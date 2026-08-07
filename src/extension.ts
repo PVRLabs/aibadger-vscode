@@ -22,8 +22,9 @@ import { runAsk } from "./flow/runAsk";
 import { resolveAskFileSelection } from "./flow/askSelection";
 import { createVscodeRunAskUi } from "./flow/vscodeUi";
 import { showDeepReviewWizard } from "./flow/askWizard";
+import { validateSelectors } from "./flow/selectors";
 import { orderProviders, toMenuItems } from "./flow/providers";
-import { prepareDeepReviewPrompt } from "./context/deepReview";
+import { continueDeepReview, prepareDeepReviewPrompt } from "./context/deepReview";
 import { createVscodeResolveDeps } from "./scope/vscodeDeps";
 import {
   createReviewSelectedChangesSelectionDeps,
@@ -232,8 +233,29 @@ export function activate(
           ...(runtime
             ? { onOpenExecutableRecovery: runtime.openRecovery }
             : {}),
-          validateSelectors: () => undefined,
-          onCopyRequestedFiles: async () => undefined,
+          validateSelectors: (text) => {
+            const validation = validateSelectors(text);
+            return validation.ok ? undefined : validation.message;
+          },
+          onCopyRequestedFiles: async (_guidance, selectors) => {
+            if (!deepReviewClient) {
+              return "Deep Review requires a Badger version with review support.";
+            }
+            const validation = validateSelectors(selectors);
+            if (!validation.ok) {
+              return validation.message;
+            }
+            return continueDeepReview(validation.text, {
+              client: deepReviewClient,
+              repositoryRoot: scope.repositoryRoot,
+              writeClipboard: async (text) => {
+                await vscode.env.clipboard.writeText(text);
+              },
+              showInformationMessage: (message) => {
+                void vscode.window.showInformationMessage(message);
+              },
+            });
+          },
         });
       }
     )

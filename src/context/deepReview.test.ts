@@ -1,5 +1,5 @@
 import { strict as assert } from "node:assert";
-import { prepareDeepReviewPrompt } from "./deepReview";
+import { continueDeepReview, prepareDeepReviewPrompt } from "./deepReview";
 import type { BadgerReviewClient } from "../client/types";
 
 function harness(overrides: Partial<BadgerReviewClient> = {}) {
@@ -104,5 +104,63 @@ suite("prepareDeepReviewPrompt", () => {
       message: "Could not write the review prompt to the clipboard.",
     });
     assert.deepEqual(h.opened, []);
+  });
+});
+
+suite("continueDeepReview", () => {
+  test("copies supplemental stdout verbatim without regenerating initial context", async () => {
+    const requests: Array<{ root: string; selectors: string }> = [];
+    const h = harness({
+      reviewContext: async () => {
+        assert.fail("initial context must not be regenerated");
+      },
+      reviewContinuation: async (request) => {
+        requests.push({
+          root: request.repositoryRoot,
+          selectors: request.selectors,
+        });
+        return { ok: true, prompt: "  [SUPPLEMENTAL]\ncurrent files\n" };
+      },
+    });
+
+    const error = await continueDeepReview(
+      "FILE:README.md\nPREFIX:src/a.ts#run\nNEAR:src/b.ts#call",
+      h.deps
+    );
+
+    assert.equal(error, undefined);
+    assert.deepEqual(requests, [{
+      root: "/repo",
+      selectors: "FILE:README.md\nPREFIX:src/a.ts#run\nNEAR:src/b.ts#call",
+    }]);
+    assert.deepEqual(h.clipboard, ["  [SUPPLEMENTAL]\ncurrent files\n"]);
+  });
+
+  test("leaves clipboard unchanged on failure, cancellation, and empty output", async () => {
+    for (const result of [
+      { ok: false as const, kind: "generationFailed" as const, message: "partial files unavailable" },
+      { ok: false as const, kind: "cancelled" as const, message: "Cancelled." },
+      { ok: true as const, prompt: " \n" },
+    ]) {
+      const h = harness({ reviewContinuation: async () => result });
+      const error = await continueDeepReview("FILE:a.go", h.deps);
+      assert.ok(error);
+      assert.deepEqual(h.clipboard, []);
+    }
+  });
+
+  test("reports clipboard failure without claiming success", async () => {
+    const h = harness();
+    h.deps.writeClipboard = async () => {
+      throw new Error("clipboard unavailable");
+    };
+
+    const error = await continueDeepReview("FILE:a.go", h.deps);
+
+    assert.equal(
+      error,
+      "Could not write the supplemental review context to the clipboard."
+    );
+    assert.deepEqual(h.messages, []);
   });
 });

@@ -20,6 +20,8 @@ export type AskWizardControllerOptions = {
   chatProviders: readonly ChatProviderMenuItem[];
   /** Complete directly after Prompt 1 for workflows with optional continuation. */
   completeAfterPrepare?: boolean;
+  /** Treat non-selector Step 2 text as final findings and finish locally. */
+  optionalSelectorContinuation?: boolean;
   onOpenExecutableRecovery?: () => Promise<boolean>;
   onPreparePrompt: (
     goal: string,
@@ -140,7 +142,11 @@ export function createAskWizardController(
           }
           if (options.completeAfterPrepare) {
             completedCopy = true;
-            deps.postMessage({ type: "showDone" });
+            deps.postMessage(
+              options.optionalSelectorContinuation
+                ? { type: "showStep2" }
+                : { type: "showDone" }
+            );
             return;
           }
           const openedProviderName = openProviderId
@@ -177,7 +183,19 @@ export function createAskWizardController(
           return;
         }
         const text = typeof msg.text === "string" ? msg.text : "";
-        if (text.trim() === "" || !hasSelectorLikeContent(text)) {
+        if (text.trim() === "") {
+          if (options.optionalSelectorContinuation) {
+            deps.postMessage({
+              type: "validationError",
+              message: "Paste the AI response, or close when the review is complete.",
+            });
+          }
+          return;
+        }
+        if (!hasSelectorLikeContent(text)) {
+          if (options.optionalSelectorContinuation) {
+            deps.finish(result());
+          }
           return;
         }
         const syntaxError = options.validateSelectors(text);

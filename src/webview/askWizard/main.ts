@@ -257,9 +257,11 @@ function focusActive(): void {
 function updateCopyEnabled(): void {
   // Step 1 must remain usable if the optional shared selector script failed
   // to load. Step 2 still performs authoritative validation in the host.
-  step2Copy.disabled = selectorPrimitives
-    ? !selectorPrimitives.hasSelectorLikeContent(aiResponse.value)
-    : aiResponse.value.trim() === "";
+  step2Copy.disabled = config.optionalSelectorContinuation
+    ? aiResponse.value.trim() === ""
+    : selectorPrimitives
+      ? !selectorPrimitives.hasSelectorLikeContent(aiResponse.value)
+      : aiResponse.value.trim() === "";
 }
 
 function setStep1Busy(busy: boolean): void {

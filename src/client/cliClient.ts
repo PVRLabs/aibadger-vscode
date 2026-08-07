@@ -284,6 +284,13 @@ export async function canStartBadgerExecutable(
   return !("error" in outcome);
 }
 
+/** Parse the deliberately small, one-line public `badger --version` format. */
+export function parseBadgerVersionOutput(stdout: string): string | undefined {
+  const line = stdout.trim();
+  const match = /^badger\s+(v[0-9][0-9A-Za-z.+-]*)$/.exec(line);
+  return match?.[1];
+}
+
 function tempPath(tmpDir: string, label: string): string {
   return path.join(
     tmpDir,
@@ -302,6 +309,34 @@ export function createBadgerCliClient(
   const tmpDir = options.tmpDir ?? os.tmpdir();
   const scriptArgs = options.scriptArgs ?? [];
   const tempFiles = options.tempFiles ?? fs;
+  let detectedVersion: string | undefined;
+  let versionProbe: Promise<string | undefined> | undefined;
+
+  const detectVersion = async (): Promise<string | undefined> => {
+    if (detectedVersion !== undefined) {
+      return detectedVersion;
+    }
+    if (!versionProbe) {
+      versionProbe = (async () => {
+        try {
+          const outcome = await runProcess(options.executable, [...scriptArgs, "--version"]);
+          if ("error" in outcome || outcome.exitCode !== 0) {
+            return undefined;
+          }
+          const parsed = parseBadgerVersionOutput(outcome.stdout);
+          if (parsed !== undefined) {
+            detectedVersion = parsed;
+          }
+          return parsed;
+        } catch {
+          return undefined;
+        } finally {
+          versionProbe = undefined;
+        }
+      })();
+    }
+    return versionProbe;
+  };
 
   type TempInput = { label: string; contents: string };
   const runOperation = async (
@@ -368,7 +403,12 @@ export function createBadgerCliClient(
         }
         return mapSpawnError(outcome.error, options.executable);
       }
-      return mapProcessOutcome(outcome);
+      const result = mapProcessOutcome(outcome);
+      if (result.ok) {
+        const badgerVersion = await detectVersion();
+        return badgerVersion ? { ...result, badgerVersion } : result;
+      }
+      return result;
     } finally {
       await Promise.all(
         paths.map((file) => tempFiles.unlink(file).catch(() => undefined))

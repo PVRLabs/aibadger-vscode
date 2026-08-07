@@ -195,6 +195,9 @@ export async function runAsk(entry: AskEntry, deps: RunAskDeps): Promise<void> {
 
         return {
           ok: true,
+          ...(result.badgerVersion
+            ? { badgerVersion: result.badgerVersion }
+            : {}),
           ...(summaryLines && summaryLines.length > 0
             ? { summaryLines }
             : {}),
@@ -234,7 +237,9 @@ export async function runAsk(entry: AskEntry, deps: RunAskDeps): Promise<void> {
         deps.ui.showInformationMessage(PROMPT2_COPIED_MESSAGE);
         // Wizard stays open on the done panel (continue chatting / start again).
         // No open-provider actions — always recommend the same existing chat.
-        return undefined;
+        return extractResult.badgerVersion
+          ? { badgerVersion: extractResult.badgerVersion }
+          : undefined;
       },
     });
   } finally {

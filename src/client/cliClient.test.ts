@@ -14,6 +14,7 @@ import {
   goalTextForWire,
   PROMPT_API_ARGS,
   PROMPT_FOCUS,
+  parseBadgerVersionOutput,
   REVIEW_CONTEXT_API_ARGS,
   REVIEW_CONTINUATION_API_ARGS,
   type RunProcess,
@@ -77,6 +78,9 @@ function createStubRunProcess(options?: {
 } {
   const calls: { executable: string; args: string[] }[] = [];
   const runProcess: RunProcess = async (executable, args) => {
+    if (args[0] === "--version") {
+      return { exitCode: 0, stdout: "badger v0.2.8\n", stderr: "" };
+    }
     calls.push({ executable, args: [...args] });
     const op = args[1]; // api <op>
     if (op === "prompt") {
@@ -236,6 +240,22 @@ suite("canStartBadgerExecutable", () => {
   });
 });
 
+suite("parseBadgerVersionOutput", () => {
+  test("accepts release and development version lines", () => {
+    assert.strictEqual(parseBadgerVersionOutput("badger v0.3.1\n"), "v0.3.1");
+    assert.strictEqual(
+      parseBadgerVersionOutput("badger v0.3.1-dev\n"),
+      "v0.3.1-dev"
+    );
+  });
+
+  test("rejects malformed, empty, and multi-line output", () => {
+    for (const output of ["", "badger 0.3.1", "badger vnext extra", "badger v0.3.1\nlog"]) {
+      assert.strictEqual(parseBadgerVersionOutput(output), undefined);
+    }
+  });
+});
+
 suite("resolveBadgerExecutable", () => {
   test("defaults to badger on PATH", () => {
     assert.strictEqual(
@@ -272,6 +292,80 @@ suite("resolveBadgerExecutable", () => {
 });
 
 suite("createBadgerCliClient against stubbed badger API", () => {
+  test("probes version after success and caches it for later operations", async () => {
+    let versionCalls = 0;
+    const client = createBadgerCliClient({
+      executable: STUB_EXECUTABLE,
+      runProcess: async (_exe, args) => {
+        if (args[0] === "--version") {
+          versionCalls += 1;
+          return { exitCode: 0, stdout: "badger v0.3.1-dev\n", stderr: "" };
+        }
+        return { exitCode: 0, stdout: PROMPT1_STDOUT, stderr: "" };
+      },
+    });
+
+    const first = await client.generatePrompt(baseRequest);
+    const second = await client.generatePrompt(baseRequest);
+    assert.strictEqual(first.ok && first.badgerVersion, "v0.3.1-dev");
+    assert.strictEqual(second.ok && second.badgerVersion, "v0.3.1-dev");
+    assert.strictEqual(versionCalls, 1);
+  });
+
+  test("retries a failed version probe without failing the prompt", async () => {
+    let versionCalls = 0;
+    const client = createBadgerCliClient({
+      executable: STUB_EXECUTABLE,
+      runProcess: async (_exe, args) => {
+        if (args[0] === "--version") {
+          versionCalls += 1;
+          return versionCalls === 1
+            ? { exitCode: 2, stdout: "", stderr: "unknown flag" }
+            : { exitCode: 0, stdout: "badger v0.3.1\n", stderr: "" };
+        }
+        return { exitCode: 0, stdout: PROMPT1_STDOUT, stderr: "" };
+      },
+    });
+
+    const first = await client.generatePrompt(baseRequest);
+    const second = await client.generatePrompt(baseRequest);
+    assert.strictEqual(first.ok, true);
+    assert.strictEqual(second.ok && second.badgerVersion, "v0.3.1");
+    assert.strictEqual(versionCalls, 2);
+  });
+
+  test("shares an in-flight version probe across concurrent operations", async () => {
+    let releaseProbe: (() => void) | undefined;
+    let versionStarted!: () => void;
+    const probeStarted = new Promise<void>((resolve) => {
+      versionStarted = resolve;
+    });
+    let versionCalls = 0;
+    const client = createBadgerCliClient({
+      executable: STUB_EXECUTABLE,
+      runProcess: async (_exe, args) => {
+        if (args[0] === "--version") {
+          versionCalls += 1;
+          versionStarted();
+          await new Promise<void>((resolve) => {
+            releaseProbe = resolve;
+          });
+          return { exitCode: 0, stdout: "badger v0.3.1-dev\n", stderr: "" };
+        }
+        return { exitCode: 0, stdout: PROMPT1_STDOUT, stderr: "" };
+      },
+    });
+
+    const first = client.generatePrompt(baseRequest);
+    const second = client.generatePrompt(baseRequest);
+    await probeStarted;
+    assert.strictEqual(versionCalls, 1);
+    releaseProbe?.();
+    const results = await Promise.all([first, second]);
+    assert.ok(results.every((result) => result.ok));
+    assert.ok(results.every((result) => result.ok && result.badgerVersion === "v0.3.1-dev"));
+  });
+
   test("writes goal, captures exact Prompt 1 stdout, cleans temp, passes --root", async () => {
     const { runProcess, calls } = createStubRunProcess();
     const tmpDir = await fs.mkdtemp(path.join(os.tmpdir(), "aibadger-cli-"));
@@ -288,6 +382,7 @@ suite("createBadgerCliClient against stubbed badger API", () => {
     }
 
     assert.strictEqual(result.prompt, PROMPT1_STDOUT);
+    assert.strictEqual(result.badgerVersion, "v0.2.8");
     assert.strictEqual(calls.length, 1);
     assert.strictEqual(calls[0].executable, STUB_EXECUTABLE);
     const args = calls[0].args;
@@ -553,6 +648,9 @@ suite("createBadgerCliClient against stubbed badger API", () => {
     const client = createBadgerCliClient({
       executable: STUB_EXECUTABLE,
       runProcess: async (_e, a) => {
+        if (a[0] === "--version") {
+          return { exitCode: 0, stdout: "badger v0.2.8\n", stderr: "" };
+        }
         args = [...a];
         return { exitCode: 0, stdout: PROMPT1_STDOUT, stderr: "" };
       },
@@ -758,6 +856,9 @@ suite("createBadgerCliClient extractPrompt against stubbed badger API", () => {
     const client = createBadgerCliClient({
       executable: STUB_EXECUTABLE,
       runProcess: async (_e, a) => {
+        if (a[0] === "--version") {
+          return { exitCode: 0, stdout: "badger v0.2.8\n", stderr: "" };
+        }
         args = [...a];
         return { exitCode: 0, stdout: PROMPT2_STDOUT, stderr: "" };
       },
@@ -783,6 +884,9 @@ suite("createBadgerCliClient Deep Review operations", () => {
       executable: STUB_EXECUTABLE,
       tmpDir,
       runProcess: async (_exe, args) => {
+        if (args[0] === "--version") {
+          return { exitCode: 0, stdout: "badger v0.2.8\n", stderr: "" };
+        }
         capturedArgs = [...args];
         guidance = await fs.readFile(args[args.indexOf("--input") + 1], "utf8");
         selectedPaths = JSON.parse(
@@ -802,7 +906,11 @@ suite("createBadgerCliClient Deep Review operations", () => {
       maxFileBytes: 32768,
     });
 
-    assert.deepStrictEqual(result, { ok: true, prompt: "standalone review\n" });
+    assert.deepStrictEqual(result, {
+      ok: true,
+      prompt: "standalone review\n",
+      badgerVersion: "v0.2.8",
+    });
     assert.strictEqual(guidance, "Focus on Unicode: 🦡");
     assert.deepStrictEqual(selectedPaths, [
       "src/space name.ts", "src/雪.ts", "--literal",
@@ -823,6 +931,9 @@ suite("createBadgerCliClient Deep Review operations", () => {
     const client = createBadgerCliClient({
       executable: STUB_EXECUTABLE,
       runProcess: async (_exe, actual) => {
+        if (actual[0] === "--version") {
+          return { exitCode: 0, stdout: "badger v0.2.8\n", stderr: "" };
+        }
         args = [...actual];
         return { exitCode: 0, stdout: "review", stderr: "" };
       },
@@ -842,6 +953,9 @@ suite("createBadgerCliClient Deep Review operations", () => {
       executable: STUB_EXECUTABLE,
       tmpDir,
       runProcess: async (_exe, actual) => {
+        if (actual[0] === "--version") {
+          return { exitCode: 0, stdout: "badger v0.2.8\n", stderr: "" };
+        }
         args = [...actual];
         selectors = await fs.readFile(actual[actual.indexOf("--input") + 1], "utf8");
         return { exitCode: 0, stdout: "supplemental\n", stderr: "warning\n" };
@@ -853,7 +967,11 @@ suite("createBadgerCliClient Deep Review operations", () => {
       maxPayloadBytes: 65536,
       maxFileBytes: 16384,
     });
-    assert.deepStrictEqual(result, { ok: true, prompt: "supplemental\n" });
+    assert.deepStrictEqual(result, {
+      ok: true,
+      prompt: "supplemental\n",
+      badgerVersion: "v0.2.8",
+    });
     assert.strictEqual(selectors, "FILE:src/雪.ts\nNEAR:src/a.ts#run");
     assert.ok(args.includes("review-continuation"));
     assert.ok(args.includes("65536"));

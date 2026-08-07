@@ -98,6 +98,8 @@ The same review limits apply: the complete request is limited to 256 KiB, option
 
 Deep Review may receive final findings immediately. If the AI instead responds with only valid `FILE:`, `PREFIX:`, or `NEAR:` selectors, choose **Continue Review** to copy current supplemental context from the same repository. Findings-only responses finish locally; mixed or malformed responses remain editable. Supplemental context is stateless and may reflect newer filesystem state than the initial review request.
 
+After a successful local Badger operation, the reusable assisted-flow header shows the detected Badger version. The indicator is best-effort and never appears before Badger has successfully run.
+
 ## Privacy
 
 - Direct file copying reads only the selected files and writes the formatted context to your local clipboard.

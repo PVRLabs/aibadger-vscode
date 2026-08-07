@@ -13,8 +13,13 @@ export type PreparePromptAction = {
 };
 
 export type PreparePromptResult =
-  | { ok: true; summaryLines?: readonly string[] }
+  | { ok: true; summaryLines?: readonly string[]; badgerVersion?: string }
   | { ok: false; message: string };
+
+export type CopyRequestedFilesResult =
+  | string
+  | undefined
+  | { error?: string; badgerVersion?: string };
 
 export type AskWizardControllerOptions = {
   chatProviders: readonly ChatProviderMenuItem[];
@@ -31,7 +36,7 @@ export type AskWizardControllerOptions = {
   onCopyRequestedFiles: (
     goal: string,
     selectors: string
-  ) => Promise<string | undefined>;
+  ) => Promise<CopyRequestedFilesResult>;
   onOpenHandoffGuide?: () => Promise<void>;
 };
 
@@ -144,9 +149,20 @@ export function createAskWizardController(
             completedCopy = true;
             deps.postMessage(
               options.optionalSelectorContinuation
-                ? { type: "showStep2" }
+                ? {
+                    type: "showStep2",
+                    ...(prepareResult.badgerVersion
+                      ? { badgerVersion: prepareResult.badgerVersion }
+                      : {}),
+                  }
                 : { type: "showDone" }
             );
+            if (prepareResult.badgerVersion && !options.optionalSelectorContinuation) {
+              deps.postMessage({
+                type: "badgerVersion",
+                version: prepareResult.badgerVersion,
+              });
+            }
             return;
           }
           const openedProviderName = openProviderId
@@ -166,6 +182,9 @@ export function createAskWizardController(
                 }
               : {}),
             ...(summaryLines ? { summaryLines } : {}),
+            ...(prepareResult.badgerVersion
+              ? { badgerVersion: prepareResult.badgerVersion }
+              : {}),
           });
         } catch {
           deps.postMessage({
@@ -209,13 +228,23 @@ export function createAskWizardController(
         busy = true;
         deps.postMessage({ type: "busy", busy: true, step: 2 });
         try {
-          const error = await options.onCopyRequestedFiles(goal, text);
+          const copyResult = await options.onCopyRequestedFiles(goal, text);
+          const error =
+            typeof copyResult === "string"
+              ? copyResult
+              : copyResult?.error;
           if (error) {
             deps.postMessage({
               type: "validationError",
               message: error,
             });
             return;
+          }
+          if (copyResult && typeof copyResult !== "string" && copyResult.badgerVersion) {
+            deps.postMessage({
+              type: "badgerVersion",
+              version: copyResult.badgerVersion,
+            });
           }
           completedCopy = true;
           deps.postMessage({ type: "showDone" });

@@ -41,6 +41,7 @@ import type { ChatProviderMenuItem } from "./providers";
 import {
   createAskWizardController,
   type AskWizardResult,
+  type CopyRequestedFilesResult,
   type PreparePromptAction,
   type PreparePromptResult,
 } from "./askWizardController";
@@ -94,7 +95,7 @@ export type AskWizardOptions = {
   onCopyRequestedFiles: (
     goal: string,
     selectors: string
-  ) => Promise<string | undefined>;
+  ) => Promise<CopyRequestedFilesResult>;
   /** Open the public, provider-neutral browser handoff guide. */
   onOpenHandoffGuide?: () => Promise<void>;
   /** Optional first-step copy used by the repository-scoped Deep Review UI. */

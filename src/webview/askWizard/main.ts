@@ -21,6 +21,7 @@ const config = readConfig();
 
 const wizardTitle = mustGetElement<HTMLHeadingElement>("wizardTitle");
 const headerStep = mustGetElement<HTMLSpanElement>("headerStep");
+const badgerVersion = mustGetElement<HTMLSpanElement>("badgerVersion");
 const step1 = mustGetElement<HTMLDivElement>("step1");
 const step2 = mustGetElement<HTMLDivElement>("step2");
 const done = mustGetElement<HTMLDivElement>("done");
@@ -208,6 +209,12 @@ function setExecutableStatus(unavailable: boolean, busy: boolean): void {
   resolveBadger.textContent = busy ? config.workingLabel : config.resolveBadgerLabel;
 }
 
+function setBadgerVersion(version: string | undefined): void {
+  const value = typeof version === "string" ? version.trim() : "";
+  badgerVersion.textContent = value ? `Badger ${value}` : "";
+  badgerVersion.classList.toggle("hidden", value === "");
+}
+
 function setSummaryLines(lines: readonly string[] | undefined): void {
   const list = Array.isArray(lines)
     ? lines.filter((line) => typeof line === "string" && line.trim() !== "")
@@ -321,8 +328,10 @@ function showOnly(which: 1 | 2 | 3): void {
 
 function showStep2(
   handoffInstruction: string | undefined,
-  summaryLines: readonly string[] | undefined
+  summaryLines: readonly string[] | undefined,
+  version?: string
 ): void {
+  setBadgerVersion(version);
   step1Error.textContent = "";
   step2Error.textContent = "";
   aiResponse.value = "";
@@ -333,6 +342,7 @@ function showStep2(
 }
 
 function showStep1(goalText: string | undefined): void {
+  setBadgerVersion(undefined);
   step1Error.textContent = "";
   step2Error.textContent = "";
   if (typeof goalText === "string") {
@@ -483,13 +493,16 @@ window.addEventListener("message", (event) => {
     setExecutableStatus(!!msg.unavailable, !!msg.busy);
   }
   if (msg.type === "showStep2") {
-    showStep2(msg.handoffInstruction, msg.summaryLines);
+    showStep2(msg.handoffInstruction, msg.summaryLines, msg.badgerVersion);
   }
   if (msg.type === "showStep1") {
     showStep1(msg.goal || "");
   }
   if (msg.type === "showDone") {
     showDone();
+  }
+  if (msg.type === "badgerVersion") {
+    setBadgerVersion(msg.version);
   }
   if (msg.type === "validationError") {
     step2Error.textContent = msg.message || "Invalid AI response.";

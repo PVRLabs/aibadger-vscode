@@ -176,6 +176,12 @@ h1 {
   color: var(--vscode-descriptionForeground, var(--vscode-foreground));
 }
 .step-indicator.hidden { display: none; }
+.version-indicator {
+  color: var(--vscode-descriptionForeground);
+  font-size: 0.75rem;
+  margin-left: 0.5rem;
+}
+.version-indicator.hidden { display: none; }
 .prompt-label {
   margin: 0 0 6px;
   font-weight: 600;

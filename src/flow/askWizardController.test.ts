@@ -62,6 +62,22 @@ suite("AskWizardController", () => {
     ]);
   });
 
+  test("shows the detected version only after successful preparation", async () => {
+    const harness = createHarness({
+      onPreparePrompt: async () => ({ ok: true, badgerVersion: "v0.3.1-dev" }),
+    });
+
+    await harness.send({ type: "step1Submit", text: "Review" });
+
+    assert.ok(
+      harness.posted.some(
+        (message) =>
+          message.type === "showStep2" &&
+          message.badgerVersion === "v0.3.1-dev"
+      )
+    );
+  });
+
   test("can complete after initial preparation for optional-continuation flows", async () => {
     const harness = createHarness({ completeAfterPrepare: true });
 

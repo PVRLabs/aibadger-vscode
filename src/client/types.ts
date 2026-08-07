@@ -46,6 +46,8 @@ export type GeneratePromptSuccess = {
   ok: true;
   /** Complete Prompt 1 text for the clipboard / external AI chat. */
   prompt: string;
+  /** Best-effort version reported by the executable that produced the prompt. */
+  badgerVersion?: string;
 };
 
 export type GeneratePromptFailure = {
@@ -61,6 +63,8 @@ export type ExtractPromptSuccess = {
   ok: true;
   /** Complete Prompt 2 text for the clipboard / external AI chat. */
   prompt: string;
+  /** Best-effort version reported by the executable that produced the prompt. */
+  badgerVersion?: string;
 };
 
 export type ExtractPromptFailure = {

@@ -166,7 +166,9 @@ function createHarness(options: {
       behavior.aiResponse
     );
     if (copyError) {
-      errors.push(copyError);
+      errors.push(
+        typeof copyError === "string" ? copyError : copyError.error ?? "copy failed"
+      );
       return undefined;
     }
 

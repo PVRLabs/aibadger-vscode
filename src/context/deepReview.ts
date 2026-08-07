@@ -59,7 +59,10 @@ export async function prepareDeepReviewPrompt(
 
   if (!providerId) {
     deps.showInformationMessage(promptCopiedMessage());
-    return { ok: true };
+    return {
+      ok: true,
+      ...(result.badgerVersion ? { badgerVersion: result.badgerVersion } : {}),
+    };
   }
 
   // The provider was validated before the clipboard write.
@@ -72,7 +75,10 @@ export async function prepareDeepReviewPrompt(
       ? promptCopiedOpenedMessage(provider.name)
       : promptCopiedOpenFailedMessage(provider.name)
   );
-  return { ok: true };
+  return {
+    ok: true,
+    ...(result.badgerVersion ? { badgerVersion: result.badgerVersion } : {}),
+  };
 }
 
 /**
@@ -82,7 +88,7 @@ export async function prepareDeepReviewPrompt(
 export async function continueDeepReview(
   selectors: string,
   deps: DeepReviewContinuationDeps
-): Promise<string | undefined> {
+): Promise<string | { badgerVersion?: string } | undefined> {
   const result = await deps.client.reviewContinuation({
     repositoryRoot: deps.repositoryRoot,
     selectors,
@@ -101,5 +107,7 @@ export async function continueDeepReview(
   deps.showInformationMessage(
     "Additional review context copied. Paste it into the same AI chat."
   );
-  return undefined;
+  return result.badgerVersion
+    ? { badgerVersion: result.badgerVersion }
+    : undefined;
 }

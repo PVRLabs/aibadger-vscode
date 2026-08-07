@@ -4,7 +4,7 @@ All notable changes to the AI Badger VS Code extension are documented here.
 
 ## Unreleased
 
-- Added repository-level Git Source Control actions: **AI Badger: Copy All Changes for Review** copies a CLI-free review request for one repository, while **AI Badger: Deep Review** is visible as a clearly marked placeholder pending Badger-side support.
+- Added functional repository-level **AI Badger: Deep Review**. It reuses the Ask-branded guidance panel, requests a topology-aware review prompt from a compatible local Badger CLI only after explicit Copy, and supports optional selector-only continuation.
 - Added direct-review actions to repository controls and the Changes group, including single-repository fallback behavior when VS Code flattens repository rows. Actions remain Git-scoped, clipboard-first, privacy-aware, and subject to the 256 KiB total / 32 KiB per-file review limits.
 - Added **AI Badger: Copy Selected Changes for Review** to Git Source Control file context menus. It copies a CLI-free, selected-file code-review request with the complete Git diff and policy-approved optional full-file context (256 KiB total, 32 KiB per file). Multi-file Source Control selections are included via the SCM rest-argument contract.
 - Binary file contents and encoded Git binary patch bodies are excluded from review payloads. Existing selected binaries receive path, change-kind, and inferred-type metadata under `[ADDITIONAL CONTEXT]`; deleted binaries rely on Git's compact deletion summary.

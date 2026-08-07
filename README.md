@@ -92,9 +92,11 @@ anywhere automatically.
 | Icon | Source Control action | Current behavior |
 | --- | --- | --- |
 | <img src="media/copy.svg" alt="Direct copy" width="16" height="16"> | **AI Badger: Copy All Changes for Review** | Copies the repository review request to the clipboard. |
-| <img src="media/copy-two-step.svg" alt="Two-step copy" width="16" height="16"> | **AI Badger: Deep Review** | Visible placeholder; functional Badger-assisted review is planned for a later release. |
+| <img src="media/copy-two-step.svg" alt="Two-step copy" width="16" height="16"> | **AI Badger: Deep Review** | Opens editable guidance and, after Copy, asks local Badger for a topology-aware review request. |
 
-The same review limits apply: the complete request is limited to 256 KiB, optional complete text-file context is limited to 32 KiB per file, and binary contents are omitted while compact Git change summaries are retained. A clean repository has no changes to copy. Nothing is shared until you paste the copied request into an AI chat.
+The same review limits apply: the complete request is limited to 256 KiB, optional complete text-file context is limited to 32 KiB per file, and binary contents are omitted while compact Git change summaries are retained. A clean repository has no changes to copy. Deep Review requires a Badger executable supporting `api review-context --include-topology`; missing or incompatible executables use the normal recovery flow. Nothing is shared until you explicitly copy and paste the generated request into an AI chat.
+
+Deep Review may receive final findings immediately. If the AI instead responds with only valid `FILE:`, `PREFIX:`, or `NEAR:` selectors, choose **Continue Review** to copy current supplemental context from the same repository. Findings-only responses finish locally; mixed or malformed responses remain editable. Supplemental context is stateless and may reflect newer filesystem state than the initial review request.
 
 ## Privacy
 

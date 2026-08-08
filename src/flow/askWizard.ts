@@ -104,11 +104,8 @@ export type AskWizardOptions = {
     placeholder: string;
     hint: string;
     copyLabel: string;
-    /** Deep Review completes after the initial prompt; continuation is optional. */
-    completeAfterCopy?: boolean;
     completionTitle?: string;
     completionDescription?: string;
-    optionalSelectorContinuation?: boolean;
     step2Indicator?: string;
     handoffHeadline?: string;
     handoffInstruction?: string;
@@ -167,9 +164,7 @@ export function showAskWizard(
     const controller = createAskWizardController(
       {
         chatProviders,
-        completeAfterPrepare: options.firstStepCopy?.completeAfterCopy ?? false,
-        optionalSelectorContinuation:
-          options.firstStepCopy?.optionalSelectorContinuation ?? false,
+        workflow: options.firstStepCopy ? "deepReview" : "ask",
         onOpenExecutableRecovery: options.onOpenExecutableRecovery,
         onPreparePrompt: options.onPreparePrompt,
         validateSelectors: options.validateSelectors,
@@ -236,8 +231,6 @@ export function showDeepReviewWizard(
       placeholder: DEEP_REVIEW_REQUEST_PLACEHOLDER,
       hint: DEEP_REVIEW_STEP1_HINT,
       copyLabel: DEEP_REVIEW_COPY_LABEL,
-      completeAfterCopy: true,
-      optionalSelectorContinuation: true,
       step2Indicator: "Optional context",
       handoffHeadline: "Review prompt copied.",
       handoffInstruction:
@@ -292,8 +285,7 @@ function createWizardConfig(
       firstStepCopy?.responsePlaceholder ?? AI_RESPONSE_PLACEHOLDER,
     copyRequestedFilesLabel:
       firstStepCopy?.continuationCopyLabel ?? COPY_REQUESTED_FILES_LABEL,
-    optionalSelectorContinuation:
-      firstStepCopy?.optionalSelectorContinuation ?? false,
+    optionalSelectorContinuation: firstStepCopy !== undefined,
     doneMessageTitle:
       firstStepCopy?.completionTitle ?? NEXT_PROMPT_COPIED_TITLE,
     doneMessageDescription:

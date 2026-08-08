@@ -78,28 +78,9 @@ suite("AskWizardController", () => {
     );
   });
 
-  test("can complete after initial preparation for optional-continuation flows", async () => {
-    const harness = createHarness({ completeAfterPrepare: true });
-
-    await harness.send({
-      type: "step1Submit",
-      text: "  Review these changes  ",
-    });
-
-    assert.deepStrictEqual(harness.posted, [
-      { type: "busy", busy: true, step: 1 },
-      { type: "showDone" },
-      { type: "busy", busy: false, step: 1 },
-    ]);
-    assert.deepStrictEqual(harness.controller.resultOnDispose(), {
-      completedCopy: true,
-    });
-  });
-
   test("offers optional continuation after initial review copy", async () => {
     const harness = createHarness({
-      completeAfterPrepare: true,
-      optionalSelectorContinuation: true,
+      workflow: "deepReview",
     });
 
     await harness.send({ type: "step1Submit", text: "Review these changes" });
@@ -109,10 +90,13 @@ suite("AskWizardController", () => {
       { type: "showStep2" },
       { type: "busy", busy: false, step: 1 },
     ]);
+    assert.deepStrictEqual(harness.controller.resultOnDispose(), {
+      completedCopy: true,
+    });
   });
 
   test("final findings finish optional continuation without a copy call", async () => {
-    const harness = createHarness({ optionalSelectorContinuation: true });
+    const harness = createHarness({ workflow: "deepReview" });
 
     await harness.send({
       type: "step2Submit",
@@ -125,7 +109,7 @@ suite("AskWizardController", () => {
 
   test("optional continuation rejects empty and mixed selector responses", async () => {
     const harness = createHarness({
-      optionalSelectorContinuation: true,
+      workflow: "deepReview",
       validateSelectors: (text) =>
         text.includes("finding") ? "Line 2: expected a selector." : undefined,
     });

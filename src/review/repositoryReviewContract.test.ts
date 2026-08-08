@@ -2,36 +2,17 @@ import * as assert from "node:assert/strict";
 import * as fs from "node:fs";
 import * as path from "node:path";
 import {
-  BADGER_ACTION_ICON,
-  COPY_ACTION_ICON,
   COPY_ALL_CHANGES_FOR_REVIEW_COMMAND,
-  COPY_ALL_CHANGES_FOR_REVIEW_TITLE,
   DEEP_REVIEW_COMMAND,
-  DEEP_REVIEW_TITLE,
-  EXPLORER_SELECTION_MENU,
-  REPOSITORY_REVIEW_CONTRACT,
   resolveRepositoryReviewScope,
   resolveSingleGitRepositoryReviewScope,
-  SCM_REPOSITORY_MENU,
 } from "./repositoryReviewContract";
 
 suite("repository review action contract", () => {
   test("uses distinct repository-level direct and assisted commands", () => {
     assert.equal(COPY_ALL_CHANGES_FOR_REVIEW_COMMAND, "aiBadger.copyAllChangesForReview");
-    assert.equal(COPY_ALL_CHANGES_FOR_REVIEW_TITLE, "AI Badger: Copy All Changes for Review");
     assert.equal(DEEP_REVIEW_COMMAND, "aiBadger.deepReview");
-    assert.equal(DEEP_REVIEW_TITLE, "AI Badger: Deep Review");
     assert.notEqual(COPY_ALL_CHANGES_FOR_REVIEW_COMMAND, "aiBadger.reviewSelectedChanges");
-  });
-
-  test("uses the per-SourceControl repository menu and existing icon meanings", () => {
-    assert.equal(SCM_REPOSITORY_MENU, "scm/sourceControl");
-    assert.equal(EXPLORER_SELECTION_MENU, "explorer/context");
-    assert.equal(REPOSITORY_REVIEW_CONTRACT.direct.icon, COPY_ACTION_ICON);
-    assert.equal(REPOSITORY_REVIEW_CONTRACT.assisted.icon, BADGER_ACTION_ICON);
-    assert.equal(REPOSITORY_REVIEW_CONTRACT.direct.requiresBadger, false);
-    assert.equal(REPOSITORY_REVIEW_CONTRACT.assisted.requiresBadger, true);
-    assert.equal(REPOSITORY_REVIEW_CONTRACT.assisted.initialState, "guidance");
   });
 
   test("resolves the clicked SourceControl repository without fallbacks", () => {
@@ -69,7 +50,7 @@ suite("repository review action contract", () => {
     ]), undefined);
   });
 
-  test("exposes repository actions after the integration chunk", () => {
+  test("exposes repository actions", () => {
     const packageJson = JSON.parse(
       fs.readFileSync(path.resolve(__dirname, "../../package.json"), "utf8")
     ) as { contributes?: { commands?: Array<{ command?: string }> } };
@@ -78,10 +59,12 @@ suite("repository review action contract", () => {
     assert.equal(commands.some((item) => item.command === DEEP_REVIEW_COMMAND), true);
   });
 
-  test("keeps both icon assets available for the later contribution", () => {
+  test("keeps contributed icon assets available", () => {
     const extensionRoot = path.resolve(__dirname, "../../");
-    assert.equal(fs.existsSync(path.resolve(extensionRoot, COPY_ACTION_ICON)), true);
-    assert.equal(fs.existsSync(path.resolve(extensionRoot, BADGER_ACTION_ICON)), true);
+    const copyActionIcon = "media/copy.svg";
+    const badgerActionIcon = "media/copy-two-step.svg";
+    assert.equal(fs.existsSync(path.resolve(extensionRoot, copyActionIcon)), true);
+    assert.equal(fs.existsSync(path.resolve(extensionRoot, badgerActionIcon)), true);
 
     const packageJson = JSON.parse(
       fs.readFileSync(path.resolve(extensionRoot, "package.json"), "utf8")
@@ -100,8 +83,8 @@ suite("repository review action contract", () => {
     ]) {
       const item = commands.find((candidate) => candidate.command === command);
       assert.deepEqual(item?.icon, {
-        light: COPY_ACTION_ICON,
-        dark: COPY_ACTION_ICON,
+        light: copyActionIcon,
+        dark: copyActionIcon,
       });
     }
     for (const command of [
@@ -112,8 +95,8 @@ suite("repository review action contract", () => {
     ]) {
       const item = commands.find((candidate) => candidate.command === command);
       assert.deepEqual(item?.icon, {
-        light: BADGER_ACTION_ICON,
-        dark: BADGER_ACTION_ICON,
+        light: badgerActionIcon,
+        dark: badgerActionIcon,
       });
     }
   });

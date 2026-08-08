@@ -23,10 +23,8 @@ export type CopyRequestedFilesResult =
 
 export type AskWizardControllerOptions = {
   chatProviders: readonly ChatProviderMenuItem[];
-  /** Complete directly after Prompt 1 for workflows with optional continuation. */
-  completeAfterPrepare?: boolean;
-  /** Treat non-selector Step 2 text as final findings and finish locally. */
-  optionalSelectorContinuation?: boolean;
+  /** Select the normal Ask flow or repository-level Deep Review behavior. */
+  workflow?: "ask" | "deepReview";
   onOpenExecutableRecovery?: () => Promise<boolean>;
   onPreparePrompt: (
     goal: string,
@@ -145,24 +143,14 @@ export function createAskWizardController(
             });
             return;
           }
-          if (options.completeAfterPrepare) {
+          if (options.workflow === "deepReview") {
             completedCopy = true;
-            deps.postMessage(
-              options.optionalSelectorContinuation
-                ? {
-                    type: "showStep2",
-                    ...(prepareResult.badgerVersion
-                      ? { badgerVersion: prepareResult.badgerVersion }
-                      : {}),
-                  }
-                : { type: "showDone" }
-            );
-            if (prepareResult.badgerVersion && !options.optionalSelectorContinuation) {
-              deps.postMessage({
-                type: "badgerVersion",
-                version: prepareResult.badgerVersion,
-              });
-            }
+            deps.postMessage({
+              type: "showStep2",
+              ...(prepareResult.badgerVersion
+                ? { badgerVersion: prepareResult.badgerVersion }
+                : {}),
+            });
             return;
           }
           const openedProviderName = openProviderId
@@ -203,7 +191,7 @@ export function createAskWizardController(
         }
         const text = typeof msg.text === "string" ? msg.text : "";
         if (text.trim() === "") {
-          if (options.optionalSelectorContinuation) {
+          if (options.workflow === "deepReview") {
             deps.postMessage({
               type: "validationError",
               message: "Paste the AI response, or close when the review is complete.",
@@ -212,7 +200,7 @@ export function createAskWizardController(
           return;
         }
         if (!hasSelectorLikeContent(text)) {
-          if (options.optionalSelectorContinuation) {
+          if (options.workflow === "deepReview") {
             deps.finish(result());
           }
           return;

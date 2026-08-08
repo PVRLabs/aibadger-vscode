@@ -114,7 +114,7 @@ export type ReviewContinuationRequest = {
   signal?: AbortSignal;
 };
 
-/** Badger-backed operations used by the future Deep Review controller. */
+/** Badger-backed operations used by the Deep Review controller. */
 export interface BadgerReviewClient {
   reviewContext(request: ReviewContextRequest): Promise<GeneratePromptResult>;
   reviewContinuation(

@@ -1,23 +1,8 @@
-/**
- * Phase 2 repository-review surface contract.
- *
- * This describes the commands and target resolution for the repository review
- * integration. Runtime registration lives in extension.ts.
- */
+/** Repository-review command IDs and target resolution. */
 
 export const COPY_ALL_CHANGES_FOR_REVIEW_COMMAND =
   "aiBadger.copyAllChangesForReview";
 export const DEEP_REVIEW_COMMAND = "aiBadger.deepReview";
-
-export const COPY_ALL_CHANGES_FOR_REVIEW_TITLE =
-  "AI Badger: Copy All Changes for Review";
-export const DEEP_REVIEW_TITLE = "AI Badger: Deep Review";
-
-export const COPY_ACTION_ICON = "media/copy.svg";
-export const BADGER_ACTION_ICON = "media/copy-two-step.svg";
-
-export const SCM_REPOSITORY_MENU = "scm/sourceControl";
-export const EXPLORER_SELECTION_MENU = "explorer/context";
 
 export type RepositoryTarget = {
   id: string;
@@ -70,53 +55,3 @@ export function resolveSingleGitRepositoryReviewScope(
   if (gitRepositories.length !== 1) return undefined;
   return resolveRepositoryReviewScope(gitRepositories[0]);
 }
-
-export type RepositoryReviewContract = {
-  direct: {
-    command: string;
-    title: string;
-    icon: string;
-    menu: string;
-    scope: "one-source-control-repository";
-    requiresBadger: false;
-  };
-  assisted: {
-    command: string;
-    title: string;
-    icon: string;
-    menu: string;
-    scope: "one-source-control-repository";
-    requiresBadger: true;
-    initialState: "guidance";
-  };
-  explorer: {
-    menu: string;
-    scope: "explicit-explorer-selection";
-    viewTitleIsNotSelection: true;
-  };
-};
-
-export const REPOSITORY_REVIEW_CONTRACT: RepositoryReviewContract = {
-  direct: {
-    command: COPY_ALL_CHANGES_FOR_REVIEW_COMMAND,
-    title: COPY_ALL_CHANGES_FOR_REVIEW_TITLE,
-    icon: COPY_ACTION_ICON,
-    menu: SCM_REPOSITORY_MENU,
-    scope: "one-source-control-repository",
-    requiresBadger: false,
-  },
-  assisted: {
-    command: DEEP_REVIEW_COMMAND,
-    title: DEEP_REVIEW_TITLE,
-    icon: BADGER_ACTION_ICON,
-    menu: SCM_REPOSITORY_MENU,
-    scope: "one-source-control-repository",
-    requiresBadger: true,
-    initialState: "guidance",
-  },
-  explorer: {
-    menu: EXPLORER_SELECTION_MENU,
-    scope: "explicit-explorer-selection",
-    viewTitleIsNotSelection: true,
-  },
-};

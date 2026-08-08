@@ -4,6 +4,7 @@ import {
   createBadgerCliClient,
 } from "./client/cliClient";
 import {
+  createExecutableClientCache,
   createExecutableRecoveringClient,
   createReviewExecutableRecoveringClient,
 } from "./client/executableRecovery";
@@ -359,19 +360,18 @@ function createDefaultBadgerRuntime(): DefaultBadgerRuntime {
     return executable;
   };
 
+  const createClient = createExecutableClientCache(
+    currentExecutable,
+    (executable) => createBadgerCliClient({ executable })
+  );
+
   const client = createExecutableRecoveringClient({
-    createClient: (executable) =>
-      createBadgerCliClient({
-        executable: executable ?? currentExecutable(),
-      }),
+    createClient,
     recoverExecutable: recoverAndRemember,
     recoverUnsupportedApi: () => recoverAndRemember("unsupportedApi"),
   });
   const reviewClient = createReviewExecutableRecoveringClient({
-    createClient: (executable) =>
-      createBadgerCliClient({
-        executable: executable ?? currentExecutable(),
-      }),
+    createClient,
     recoverExecutable: recoverAndRemember,
     recoverUnsupportedApi: () => recoverAndRemember("unsupportedApi"),
   });

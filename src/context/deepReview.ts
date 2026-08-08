@@ -62,7 +62,7 @@ export async function prepareDeepReviewPrompt(
     };
   }
 
-  if (!providerId) {
+  if (!provider) {
     deps.showInformationMessage(promptCopiedMessage());
     return {
       ok: true,
@@ -70,10 +70,6 @@ export async function prepareDeepReviewPrompt(
     };
   }
 
-  // The provider was validated before the clipboard write.
-  if (!provider) {
-    return { ok: false, message: "Unknown AI chat." };
-  }
   const opened = await deps.openExternal(provider.url);
   deps.showInformationMessage(
     opened

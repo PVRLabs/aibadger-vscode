@@ -1,6 +1,7 @@
 import * as assert from "assert";
 import type { BadgerClient, BadgerReviewClient, PromptRequest } from "./types";
 import {
+  createExecutableClientCache,
   createExecutableRecoveringClient,
   createReviewExecutableRecoveringClient,
 } from "./executableRecovery";
@@ -28,6 +29,23 @@ function unavailableClient(calls: string[], executable = "badger"): BadgerClient
 }
 
 suite("executable recovery client", () => {
+  test("caches clients by resolved executable and observes configuration changes", () => {
+    let configuredExecutable = "/opt/badger-a";
+    const created: string[] = [];
+    const clients = createExecutableClientCache(
+      () => configuredExecutable,
+      (executable) => {
+        created.push(executable);
+        return { executable };
+      }
+    );
+
+    assert.strictEqual(clients(), clients());
+    configuredExecutable = "/opt/badger-b";
+    assert.notStrictEqual(clients(), clients("/opt/badger-a"));
+    assert.deepStrictEqual(created, ["/opt/badger-a", "/opt/badger-b"]);
+  });
+
   test("retries the original request with the chosen executable", async () => {
     const calls: string[] = [];
     let recoveryCalls = 0;

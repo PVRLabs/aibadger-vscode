@@ -9,6 +9,20 @@ unit tests, and optional VS Code integration tests.
 Read `README.md` and `package.json` for the current product behavior and npm
 scripts.
 
+A `.badger-context` file may list related read-only context directories used by
+AI Badger.
+
+Do not proactively read, inventory, or recursively search those directories.
+Consult a listed directory only when:
+
+- the user explicitly references material in it;
+- a repository file or task points to a specific document there; or
+- the current task requires information that cannot be found in this repository.
+
+When external context is needed, read only the specific files relevant to the
+task. Treat all listed directories as read-only and do not include their
+contents in public documentation or source files.
+
 ## Agent-Friendly CLI Usage
 
 Prefer low-noise tools when available on `PATH`.

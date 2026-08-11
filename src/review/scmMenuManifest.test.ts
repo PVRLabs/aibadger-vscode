@@ -71,9 +71,9 @@ suite("reviewSelectedChanges SCM menu manifest contract", () => {
     assert.ok(titleMenus?.some((item) => item.command === "aiBadger.deepReview"));
     assert.ok(titleMenus?.some((item) =>
       item.command === "aiBadger.copyWorkspaceChangesForReview" &&
-      item.when === undefined &&
+      item.when === "!scmProvider" &&
       item.group === "navigation@92"
-    ));
+    ), "workspace review must appear only in the aggregate SCM title context");
     assert.equal(sourceControlMenus.some((item) =>
       item.command === "aiBadger.copyWorkspaceChangesForReview"
     ), false, "workspace review must not render on every repository row");

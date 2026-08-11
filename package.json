@@ -190,6 +190,7 @@
       "scm/title": [
         {
           "command": "aiBadger.copyWorkspaceChangesForReview",
+          "when": "!scmProvider",
           "group": "navigation@92"
         },
         {

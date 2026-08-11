@@ -90,8 +90,14 @@ async function openReviewFile(path: string): Promise<ReviewFileHandle> {
 }
 
 function fileBlock(path: string, contents: string): string {
-  const normalized = contents.endsWith("\n") ? contents : `${contents}\n`;
-  return `--- File: ${path} (Full File) ---\n${normalized}--- End File ---`;
+  return `--- File: ${path} (Full File) ---\n${literalFence("text", contents)}\n--- End File ---`;
+}
+
+function literalFence(language: string, contents: string): string {
+  const runs = contents.match(/`+/g) ?? [];
+  const fence = "`".repeat(Math.max(3, 1 + runs.reduce((longest, run) => Math.max(longest, run.length), 0)));
+  const ending = contents.endsWith("\n") ? "" : "\n";
+  return `${fence}${language}\n${contents}${ending}${fence}`;
 }
 
 function statusBlock(statuses: readonly ReviewFileStatus[]): string {
@@ -148,7 +154,7 @@ function render(
 ): string {
   return [
     `[TASK]\n${REVIEW_TASK}`,
-    `[REVIEW CONTEXT: SELECTED GIT DIFF]\n${diff}`,
+    `[REVIEW CONTEXT: SELECTED GIT DIFF]\n${literalFence("diff", diff)}`,
     ...(additionalBlocks.length > 0 ? [`[ADDITIONAL CONTEXT]\n${additionalBlocks.join("\n\n")}`] : []),
     ...(blocks.length > 0 ? [`[CONTEXT]\n${blocks.join("\n\n")}`] : []),
     statusBlock(statuses),

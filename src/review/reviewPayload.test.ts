@@ -43,9 +43,22 @@ suite("buildReviewPayload", () => {
     assert.equal(result.ok, true);
     if (!result.ok) return;
     assert.ok(result.payload.startsWith(`[TASK]\n${REVIEW_TASK}`));
-    assert.ok(result.payload.includes("[REVIEW CONTEXT: SELECTED GIT DIFF]\ndiff text"));
+    assert.ok(result.payload.includes("[REVIEW CONTEXT: SELECTED GIT DIFF]\n```diff\ndiff text\n```"));
     assert.ok(result.payload.includes("--- File: src/a.ts (Full File) ---"));
     assert.ok(result.payload.endsWith("[FILE CONTEXT STATUS]\n"));
+  });
+
+  test("fences and exactly preserves Markdown source containing existing fences", async () => {
+    const badge = "[![GitHub stars](https://img.shields.io/github/stars/PVRLabs/statlite?style=flat)](https://github.com/PVRLabs/statlite/stargazers)";
+    const diff = `+${badge}\n+\`\`\`md\n+inside\n+\`\`\`\n+\`\`\`\``;
+    const contents = `${badge}\n\`\`\`md\ninside\n\`\`\`\n\`\`\`\`\n`;
+    const result = await buildReviewPayload(diff, [
+      { uri: uri("/repo/README.md"), relativePath: "README.md", changeKind: "modified" },
+    ], { openFile: async () => fakeHandle(new TextEncoder().encode(contents)) });
+    assert.equal(result.ok, true);
+    if (!result.ok) return;
+    assert.ok(result.payload.includes(`\`\`\`\`\`diff\n${diff}\n\`\`\`\`\``));
+    assert.ok(result.payload.includes(`\`\`\`\`\`text\n${contents}\`\`\`\`\``));
   });
 
   test("uses exact UTF-8 file limit and excludes the next byte", async () => {

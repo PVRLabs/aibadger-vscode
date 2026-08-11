@@ -10,6 +10,9 @@ Do not search them proactively. Consult only specific files needed when the
 user, task, or repository points there, or when this repository lacks required
 information. Never include private context contents in public source or docs.
 
+Use `repo-map` to locate related repositories when work requires CLI or private
+specification context; the context restrictions above still apply.
+
 Keep extension behavior and webview contracts synchronized. Add focused tests
 for changed behavior and avoid unrelated package, build, or dependency edits.
 

@@ -95,6 +95,14 @@
         }
       },
       {
+        "command": "aiBadger.copyWorkspaceChangesForReview",
+        "title": "AI Badger: Copy Workspace Changes for Review",
+        "icon": {
+          "light": "media/copy.svg",
+          "dark": "media/copy.svg"
+        }
+      },
+      {
         "command": "aiBadger.deepReview",
         "title": "AI Badger: Deep Review",
         "icon": {
@@ -181,6 +189,10 @@
       ],
       "scm/title": [
         {
+          "command": "aiBadger.copyWorkspaceChangesForReview",
+          "group": "navigation@92"
+        },
+        {
           "command": "aiBadger.copyAllChangesForReview",
           "when": "scmProvider == git",
           "group": "navigation@90"
@@ -204,6 +216,9 @@
         }
       ],
       "commandPalette": [
+        {
+          "command": "aiBadger.copyWorkspaceChangesForReview"
+        },
         {
           "command": "aiBadger.reviewSelectedChanges",
           "when": "false"

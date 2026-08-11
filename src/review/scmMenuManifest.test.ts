@@ -12,6 +12,7 @@ const packageJson = JSON.parse(
       "scm/sourceControl"?: Array<{ command?: string; when?: string; group?: string }>;
       "scm/resourceGroup/context"?: Array<{ command?: string; when?: string; group?: string }>;
       "scm/title"?: Array<{ command?: string; when?: string; group?: string }>;
+      "view/title"?: Array<{ command?: string; when?: string; group?: string }>;
       commandPalette?: Array<{ command?: string; when?: string }>;
     };
   };
@@ -54,6 +55,10 @@ suite("reviewSelectedChanges SCM menu manifest contract", () => {
       (item) => item.command === "aiBadger.deepReview" &&
         item.title === "AI Badger: Deep Review"
     ));
+    assert.ok(commands?.some(
+      (item) => item.command === "aiBadger.copyWorkspaceChangesForReview" &&
+        item.title === "AI Badger: Copy Workspace Changes for Review"
+    ));
     const sourceControlMenus = packageJson.contributes.menus?.["scm/sourceControl"];
     assert.ok(sourceControlMenus);
     for (const command of ["aiBadger.copyAllChangesForReview", "aiBadger.deepReview"]) {
@@ -64,6 +69,17 @@ suite("reviewSelectedChanges SCM menu manifest contract", () => {
     const titleMenus = packageJson.contributes.menus?.["scm/title"];
     assert.ok(titleMenus?.some((item) => item.command === "aiBadger.copyAllChangesForReview"));
     assert.ok(titleMenus?.some((item) => item.command === "aiBadger.deepReview"));
+    assert.ok(titleMenus?.some((item) =>
+      item.command === "aiBadger.copyWorkspaceChangesForReview" &&
+      item.when === undefined &&
+      item.group === "navigation@92"
+    ));
+    assert.equal(sourceControlMenus.some((item) =>
+      item.command === "aiBadger.copyWorkspaceChangesForReview"
+    ), false, "workspace review must not render on every repository row");
+    assert.ok(packageJson.contributes.menus?.commandPalette?.some((item) =>
+      item.command === "aiBadger.copyWorkspaceChangesForReview" && item.when === undefined
+    ));
     const groupMenus = packageJson.contributes.menus?.["scm/resourceGroup/context"];
     assert.equal(
       groupMenus?.find((item) => item.command === "aiBadger.copyAllChangesForReview")?.group,

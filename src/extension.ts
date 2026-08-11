@@ -43,6 +43,10 @@ import {
   DEEP_REVIEW_COMMAND,
   resolveRepositoryReviewScope,
 } from "./review/repositoryReviewContract";
+import {
+  COPY_WORKSPACE_CHANGES_FOR_REVIEW_COMMAND,
+} from "./review/workspaceReviewContract";
+import { copyWorkspaceChangesForReview } from "./context/workspaceReviewChanges";
 
 const INSTALLATION_INSTRUCTIONS_URL =
   "https://github.com/PVRLabs/aibadger/blob/main/docs/install.md";
@@ -184,6 +188,19 @@ export function activate(
       }
     ),
     vscode.commands.registerCommand(
+      COPY_WORKSPACE_CHANGES_FOR_REVIEW_COMMAND,
+      async () => {
+        await copyWorkspaceChangesForReview(
+          await changedWorkspaceRepositoryRoots(),
+          {
+            writeClipboard: async (text) => vscode.env.clipboard.writeText(text),
+            showInformationMessage: (message) => { void vscode.window.showInformationMessage(message); },
+            showErrorMessage: (message) => { void vscode.window.showErrorMessage(message); },
+          }
+        );
+      }
+    ),
+    vscode.commands.registerCommand(
       DEEP_REVIEW_COMMAND,
       async (sourceControl?: vscode.SourceControl) => {
         const target = await resolveRepositoryActionTarget(sourceControl);
@@ -265,10 +282,39 @@ export function activate(
 
 type GitExtension = {
   getAPI(version: number): {
-    repositories: readonly { rootUri: vscode.Uri }[];
+    repositories: readonly GitRepository[];
     getRepository(uri: vscode.Uri): { rootUri: vscode.Uri } | null;
   };
 };
+
+type GitRepository = {
+  rootUri: vscode.Uri;
+  state?: {
+    workingTreeChanges?: readonly unknown[];
+    indexChanges?: readonly unknown[];
+    mergeChanges?: readonly unknown[];
+    untrackedChanges?: readonly unknown[];
+  };
+};
+
+async function changedWorkspaceRepositoryRoots(): Promise<string[]> {
+  const extension = vscode.extensions.getExtension<GitExtension>("vscode.git");
+  if (!extension) return [];
+  try {
+    const repositories = (await extension.activate()).getAPI(1).repositories;
+    return repositories.filter((repository) => {
+      const state = repository.state;
+      return state !== undefined && [
+        state.workingTreeChanges,
+        state.indexChanges,
+        state.mergeChanges,
+        state.untrackedChanges,
+      ].some((changes) => (changes?.length ?? 0) > 0);
+    }).map((repository) => repository.rootUri.fsPath);
+  } catch {
+    return [];
+  }
+}
 
 type RepositoryActionTarget = {
   target: unknown;

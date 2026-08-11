@@ -20,6 +20,7 @@ export type ReviewPayloadFile = {
 
 export type ReviewPayloadReadDeps = {
   openFile?: (path: string) => Promise<ReviewFileHandle>;
+  maxPayloadBytes?: number;
 };
 
 type ReviewFileMetadata = {
@@ -198,6 +199,7 @@ export async function buildReviewPayload(
   files: readonly ReviewPayloadFile[],
   deps: ReviewPayloadReadDeps = {}
 ): Promise<ReviewPayloadResult> {
+  const maxPayloadBytes = deps.maxPayloadBytes ?? MAX_REVIEW_PAYLOAD_BYTES;
   const fixedStatuses: ReviewFileStatus[] = [];
   const candidates: OptionalCandidate[] = [];
   const additionalBlocks = files
@@ -215,7 +217,7 @@ export async function buildReviewPayload(
   }
 
   const mandatory = render(diff, [], additionalBlocks, fixedStatuses);
-  if (byteLength(mandatory) > MAX_REVIEW_PAYLOAD_BYTES) {
+  if (byteLength(mandatory) > maxPayloadBytes) {
     return { ok: false, reason: "mandatory-overflow", byteLength: byteLength(mandatory) };
   }
 
@@ -268,7 +270,7 @@ export async function buildReviewPayload(
       if (index >= excludedFrom) break;
       const nextBlocks = [...blocks, candidate.block];
       const next = render(diff, nextBlocks, additionalBlocks, fixedStatuses);
-      if (byteLength(next) > MAX_REVIEW_PAYLOAD_BYTES) {
+      if (byteLength(next) > maxPayloadBytes) {
         excludedFrom = index;
         break;
       }
@@ -286,7 +288,7 @@ export async function buildReviewPayload(
         : [];
     });
     const payload = render(diff, blocks, additionalBlocks, statuses);
-    if (byteLength(payload) <= MAX_REVIEW_PAYLOAD_BYTES) {
+    if (byteLength(payload) <= maxPayloadBytes) {
       return { ok: true, payload, includedFiles, statuses };
     }
     const lastIncluded = includedFiles.at(-1);

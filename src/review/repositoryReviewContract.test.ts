@@ -100,4 +100,19 @@ suite("repository review action contract", () => {
       });
     }
   });
+
+  test("uses packaged raster action marks in the README", () => {
+    const extensionRoot = path.resolve(__dirname, "../../");
+    const readme = fs.readFileSync(path.resolve(extensionRoot, "README.md"), "utf8");
+    const documentationIcons = [
+      "media/copy-readme.png",
+      "media/copy-two-step-readme.png",
+    ];
+
+    for (const icon of documentationIcons) {
+      assert.equal(fs.existsSync(path.resolve(extensionRoot, icon)), true);
+      assert.equal(readme.includes(`src="${icon}"`), true);
+    }
+    assert.equal(/<img\s+[^>]*src="[^"]+\.svg"/u.test(readme), false);
+  });
 });

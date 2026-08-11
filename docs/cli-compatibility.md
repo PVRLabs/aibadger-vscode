@@ -4,6 +4,8 @@ The extension is a desktop integration for a separately installed AI Badger
 CLI. It does not download or bundle the CLI.
 
 Compatibility is capability-based rather than tied to a CLI version number.
+Badger CLI v0.4.0 is the first released version containing all operations
+required by this extension's Deep Review workflow.
 The selected `badger` executable must support these non-interactive commands:
 
 ```text
@@ -21,7 +23,9 @@ its temporary UTF-8 input files after each operation.
 
 Deep Review uses `review-context --include-topology` for one Git repository.
 Badger owns current Git inspection, topology/source-tree composition, review
-limits, and prompt formatting. The extension copies successful stdout verbatim.
+limits, and prompt formatting. Its defaults are 512 KiB for the complete prompt
+and 64 KiB per supporting file; the extension's direct-review 256 KiB/32 KiB
+limits do not apply to Deep Review. The extension copies successful stdout verbatim.
 It does not fall back to topology-free output when the requested operation or
 flag is unsupported; the normal executable recovery flow offers upgrade or
 executable selection. Selector-only continuation uses `review-continuation`,

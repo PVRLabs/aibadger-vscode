@@ -110,11 +110,10 @@ export type BadgerCliClientOptions = {
   tmpDir?: string;
   /** Override temporary-file operations (focused lifecycle tests). */
   tempFiles?: {
-    writeFile(
-      file: string,
-      contents: string,
-      options: { encoding: "utf8" }
-    ): Promise<void>;
+    open(file: string, flags: "wx", mode: 0o600): Promise<{
+      writeFile(contents: string, options: { encoding: "utf8" }): Promise<void>;
+      close(): Promise<void>;
+    }>;
     unlink(file: string): Promise<void>;
   };
 };
@@ -364,12 +363,17 @@ export function createBadgerCliClient(
       }
     }
     const paths = inputs.map((input) => tempPath(tmpDir, input.label));
+    const createdPaths: string[] = [];
     try {
       try {
         for (let index = 0; index < inputs.length; index++) {
-          await tempFiles.writeFile(paths[index], inputs[index].contents, {
-            encoding: "utf8",
-          });
+          const handle = await tempFiles.open(paths[index], "wx", 0o600);
+          createdPaths.push(paths[index]);
+          try {
+            await handle.writeFile(inputs[index].contents, { encoding: "utf8" });
+          } finally {
+            await handle.close().catch(() => undefined);
+          }
         }
       } catch (error) {
         const message =
@@ -411,7 +415,7 @@ export function createBadgerCliClient(
       return result;
     } finally {
       await Promise.all(
-        paths.map((file) => tempFiles.unlink(file).catch(() => undefined))
+        createdPaths.map((file) => tempFiles.unlink(file).catch(() => undefined))
       );
     }
   };

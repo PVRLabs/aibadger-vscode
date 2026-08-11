@@ -632,7 +632,10 @@ suite("createBadgerCliClient against stubbed badger API", () => {
         stderr: "",
       }),
       tempFiles: {
-        writeFile: async () => undefined,
+        open: async () => ({
+          writeFile: async () => undefined,
+          close: async () => undefined,
+        }),
         unlink: async () => {
           throw new Error("cleanup failed");
         },
@@ -641,6 +644,61 @@ suite("createBadgerCliClient against stubbed badger API", () => {
 
     const result = await client.generatePrompt(baseRequest);
     assert.strictEqual(result.ok, true);
+  });
+
+  test("creates temporary inputs exclusively with owner-only permissions", async () => {
+    const openOptions: Array<{ flags: "wx"; mode: 0o600 }> = [];
+    const writeOptions: Array<{ encoding: "utf8" }> = [];
+    const client = createBadgerCliClient({
+      executable: STUB_EXECUTABLE,
+      runProcess: async () => ({ exitCode: 0, stdout: PROMPT1_STDOUT, stderr: "" }),
+      tempFiles: {
+        open: async (_file, flags, mode) => {
+          openOptions.push({ flags, mode });
+          return {
+            writeFile: async (_contents, options) => {
+              writeOptions.push(options);
+            },
+            close: async () => undefined,
+          };
+        },
+        unlink: async () => undefined,
+      },
+    });
+
+    const result = await client.generatePrompt(baseRequest);
+
+    assert.strictEqual(result.ok, true);
+    assert.deepStrictEqual(openOptions, [{ flags: "wx", mode: 0o600 }]);
+    assert.deepStrictEqual(writeOptions, [{ encoding: "utf8" }]);
+  });
+
+  test("leaves a colliding pre-existing temporary file untouched", async () => {
+    let processCalls = 0;
+    const unlinks: string[] = [];
+    const client = createBadgerCliClient({
+      executable: STUB_EXECUTABLE,
+      runProcess: async () => {
+        processCalls += 1;
+        return { exitCode: 0, stdout: PROMPT1_STDOUT, stderr: "" };
+      },
+      tempFiles: {
+        open: async () => {
+          const error = new Error("file already exists") as NodeJS.ErrnoException;
+          error.code = "EEXIST";
+          throw error;
+        },
+        unlink: async (file) => {
+          unlinks.push(file);
+        },
+      },
+    });
+
+    const result = await client.generatePrompt(baseRequest);
+
+    assert.strictEqual(result.ok, false);
+    assert.strictEqual(processCalls, 0);
+    assert.deepStrictEqual(unlinks, []);
   });
 
   test("argv includes projectRoot as --root but never relative scope", async () => {
@@ -783,7 +841,7 @@ suite("createBadgerCliClient extractPrompt against stubbed badger API", () => {
     assert.strictEqual(writtenBytes, Buffer.byteLength(oversizedForReview, "utf8"));
   });
 
-  test("second input write failure cleans every allocated temp path", async () => {
+  test("partial second-input write failure cleans both owned paths", async () => {
     const writes: string[] = [];
     const unlinks: string[] = [];
     let processCalls = 0;
@@ -794,12 +852,15 @@ suite("createBadgerCliClient extractPrompt against stubbed badger API", () => {
         return { exitCode: 0, stdout: PROMPT2_STDOUT, stderr: "" };
       },
       tempFiles: {
-        writeFile: async (file) => {
-          writes.push(file);
-          if (writes.length === 2) {
-            throw new Error("disk full");
-          }
-        },
+        open: async (file) => ({
+          writeFile: async () => {
+            writes.push(file);
+            if (writes.length === 2) {
+              throw new Error("disk full");
+            }
+          },
+          close: async () => undefined,
+        }),
         unlink: async (file) => {
           unlinks.push(file);
         },

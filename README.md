@@ -85,6 +85,14 @@ The complete clipboard request is limited to 256 KiB, and optional full-file con
 
 From a Git repository in the Source Control view, choose **AI Badger: Copy All Changes for Review**. The action copies one self-contained review request for that repository's current staged, unstaged, untracked, renamed, and deleted changes. It does not require the Badger CLI and never includes changes from another repository.
 
+For a multi-repository workspace, choose **AI Badger: Copy Workspace Changes
+for Review** from the Command Palette or the aggregate **Changes** title. It
+copies one request with a clearly labeled section for every open Git repository
+that currently has changes. Duplicate repository folder names are numbered so
+same-named files remain attributable to the correct repository. The operation
+has no picker and is atomic: if any included repository cannot be prepared or
+the complete request does not fit, the clipboard is left unchanged.
+
 These Git Source Control actions are available from the repository actions and
 the **Changes** group. Both require an explicit user action; nothing is sent
 anywhere automatically.
@@ -92,9 +100,10 @@ anywhere automatically.
 | Icon | Source Control action | Current behavior |
 | --- | --- | --- |
 | <img src="media/copy-readme.png" alt="Direct copy" width="16" height="16"> | **AI Badger: Copy All Changes for Review** | Copies the repository review request to the clipboard. |
+| <img src="media/copy-readme.png" alt="Direct copy" width="16" height="16"> | **AI Badger: Copy Workspace Changes for Review** | Copies all changed open Git repositories as one repository-qualified request. |
 | <img src="media/copy-two-step-readme.png" alt="Two-step copy" width="16" height="16"> | **AI Badger: Deep Review** | Opens editable guidance and, after Copy, asks local Badger for a topology-aware review request. |
 
-Direct **Copy All Changes for Review** uses a 256 KiB complete-request limit and a 32 KiB per-file limit for optional complete text context. **Deep Review** uses Badger's defaults of 512 KiB and 64 KiB respectively unless a caller explicitly supplies different limits. Both preserve the authoritative diff and omit binary contents while retaining compact Git change summaries. A clean repository has no changes to copy. Badger CLI v0.4.0 is the first released version supporting the required `api review-context --include-topology` and `api review-continuation` operations; compatibility remains capability-based, and missing or incompatible executables use the normal recovery flow without a topology-free fallback. Nothing is shared until you explicitly copy and paste the generated request into an AI chat.
+Direct repository and workspace review use a 256 KiB complete-request limit and a 32 KiB per-file limit for optional complete text context. Workspace review divides the optional-context capacity equally among its repository sections and reports omitted file context. **Deep Review** uses Badger's defaults of 512 KiB and 64 KiB respectively unless a caller explicitly supplies different limits. These flows preserve the authoritative diff and omit binary contents while retaining compact Git change summaries. A clean repository or workspace has no changes to copy. Workspace review is implemented entirely by the extension and does not invoke Badger. Badger CLI v0.4.0 is the first released version supporting the separate Deep Review operations `api review-context --include-topology` and `api review-continuation`; compatibility remains capability-based, and missing or incompatible executables use the normal recovery flow without a topology-free fallback. Nothing is shared until you explicitly copy and paste the generated request into an AI chat.
 
 Deep Review may receive final findings immediately. If the AI instead responds with only valid `FILE:`, `PREFIX:`, or `NEAR:` selectors, choose **Continue Review** to copy current supplemental context from the same repository. Findings-only responses finish locally; mixed or malformed responses remain editable. Supplemental context is stateless and may reflect newer filesystem state than the initial review request.
 
@@ -103,6 +112,7 @@ After a successful local Badger operation, the reusable assisted-flow header sho
 ## Privacy
 
 - Direct file copying reads only the selected files and writes the formatted context to your local clipboard.
+- Direct repository and workspace review run locally in the extension, inspect only the explicitly targeted open Git repositories, and write one completed request to the clipboard only after every repository succeeds.
 - Smart context invokes the local AI Badger CLI and does not upload your repository to PVR Labs.
 - It does not bundle or host an AI model, and it does not require an AI-provider API key.
 - You control what generated context is copied and pasted into ChatGPT, Claude, Grok, or another external AI service.

@@ -18,6 +18,9 @@ suite("AI Badger extension shell", () => {
     assert.ok(commands.includes("aiBadger.copyFileForAI"));
     assert.ok(commands.includes("aiBadger.copyFilesForAI"));
     assert.ok(commands.includes("aiBadger.reviewSelectedChanges"));
+    assert.ok(commands.includes("aiBadger.copyAllChangesForReview"));
+    assert.ok(commands.includes("aiBadger.copyWorkspaceChangesForReview"));
+    assert.ok(commands.includes("aiBadger.deepReview"));
   });
 
   test("copy command is contributed to the Explorer file context menu", () => {

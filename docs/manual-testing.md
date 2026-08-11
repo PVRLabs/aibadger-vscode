@@ -51,6 +51,22 @@ Expected result: each request contains only the invoked repository's state.
 There is no aggregation, active-editor fallback, first-workspace fallback, or
 guessing when multiple repositories are ambiguous.
 
+### 2a. Workspace-wide direct review
+
+Open a disposable multi-root workspace containing at least two changed Git
+repositories, including two repositories with the same folder name and the
+same changed relative path when practical. Confirm **AI Badger: Copy Workspace
+Changes for Review** appears once beside the aggregate **Changes** title, does
+not appear on repository rows, and is available from the Command Palette.
+
+Invoke both surfaces. Expected result: one clipboard request contains a
+deterministic, repository-qualified section for every changed open repository;
+duplicate names are numbered, same-named files stay in their own sections, and
+clean repositories are absent. The action opens no wizard or provider and does
+not run Badger. If one repository fails preparation, the aggregate request is
+too large, or the clipboard write fails, the previous clipboard value remains
+unchanged and no success message appears.
+
 ### 3. Guidance panel and consent boundary
 
 Open Deep Review, edit the optional guidance, close it, and open it again.
@@ -126,7 +142,9 @@ Selected Changes for Review**. Confirm the selected Git diff is present, small
 eligible file context may be included, unrelated changes are absent, and the
 action does not invoke Badger or open a wizard. Then run **AI Badger: Copy All
 Changes for Review** and confirm it includes all changes for exactly one
-repository.
+repository. Finally run **AI Badger: Copy Workspace Changes for Review** and
+confirm it includes every changed open Git repository without changing either
+repository-scoped action's target.
 
 ## Results template
 

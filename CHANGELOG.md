@@ -6,6 +6,7 @@ All notable changes to the AI Badger VS Code extension are documented here.
 
 ## [0.0.4] - 2026-08-11
 
+- Added **AI Badger: Copy Workspace Changes for Review** to the Command Palette and aggregate Source Control **Changes** title. It atomically copies every changed open Git repository in one repository-qualified, CLI-free request, with deterministic duplicate-name labels and fair optional-context budgeting.
 - Added functional repository-level **AI Badger: Deep Review**. It reuses the Ask-branded guidance panel, requests a topology-aware review prompt from a compatible local Badger CLI only after explicit Copy, and supports optional selector-only continuation.
 - Deep Review requires capabilities first released in Badger `v0.4.0`; compatibility remains capability-based rather than enforced by a hard runtime version gate.
 - Added direct-review actions to repository controls and the Changes group, including single-repository fallback behavior when VS Code flattens repository rows. Actions remain Git-scoped, clipboard-first, privacy-aware, and subject to the 256 KiB total / 32 KiB per-file review limits.

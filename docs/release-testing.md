@@ -1,8 +1,8 @@
-# Manual testing
+# Release testing
 
-This guide covers repeatable manual checks for the AI Badger VS Code
-extension. It focuses on common user scenarios and is intentionally separate
-from the automated unit suite.
+This guide covers repeatable release smoke tests and manual checks for the AI
+Badger VS Code extension. It focuses on common user scenarios and is
+intentionally separate from the automated unit suite.
 
 ## Before you start
 
@@ -28,6 +28,81 @@ from the automated unit suite.
 For provider-opening checks, use a test browser profile or a provider landing
 page. The extension must never send prompt text to a provider API or embed it
 in a URL.
+
+## Public Marketplace release smoke
+
+Use this short check after Marketplace publication to verify the extension
+that users actually receive. Keep the profile, extension directory, workspace,
+and repositories disposable and outside the product repository.
+
+Before launching VS Code, create this file in the disposable profile at
+`<profile>/User/settings.json`:
+
+```json
+{
+  "security.workspace.trust.enabled": false
+}
+```
+
+This setting is required for the isolated smoke fixture. Do not omit it:
+otherwise VS Code opens the disposable workspace in Restricted Mode, disables
+the extension, and `vscode-test palette` can time out or report misleading
+command failures. A sandbox or process permission does not make the VS Code
+workspace trusted.
+
+Create a multi-root `.code-workspace` containing two disposable Git
+repositories with one uncommitted file in each. Install the public extension
+into the isolated extension directory, and confirm that the Marketplace serves
+the expected version:
+
+```bash
+"/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code" \
+  --install-extension pvrlabs.ai-badger --force \
+  --extensions-dir <extensions-dir>
+
+"/Applications/Visual Studio Code.app/Contents/Resources/app/bin/code" \
+  --list-extensions --show-versions \
+  --extensions-dir <extensions-dir>
+```
+
+Run the multi-repository portion with the same `vscode-test` commands used for
+the v0.0.4 public-release check:
+
+```bash
+vscode-test launch <fixture.code-workspace> \
+  --user-data-dir <profile> \
+  --extensions-dir <extensions-dir>
+vscode-test activate
+vscode-test palette "AI Badger: Copy Workspace Changes for Review"
+vscode-test text page --limit 4000
+vscode-test palette "Source Control: Focus on Changes View"
+vscode-test controls page --filter "AI Badger"
+vscode-test stop
+```
+
+Expected result: the installed version is the release being checked; activation
+succeeds; workspace review reports that it copied both repositories; Source
+Control contains one aggregate workspace action plus Copy All Changes and Deep
+Review actions for each repository.
+
+The click helper requires a unique accessible label. Because both repository
+rows expose **AI Badger: Deep Review**, relaunch on one disposable repository
+before opening the panel:
+
+```bash
+vscode-test launch <single-repository> \
+  --user-data-dir <profile> \
+  --extensions-dir <extensions-dir>
+vscode-test activate
+vscode-test palette "Source Control: Focus on Changes View"
+vscode-test click --aria-label "AI Badger: Deep Review"
+vscode-test text page --limit 4000
+vscode-test stop
+```
+
+Expected result: the page text includes **AI Badger: Deep Review**. The Deep
+Review UI is an editor webview, so `vscode-test text panel` is not the correct
+inspection command and can report that no active panel frame is visible.
 
 ## Core scenarios
 

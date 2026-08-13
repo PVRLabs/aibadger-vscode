@@ -211,7 +211,7 @@ function setExecutableStatus(unavailable: boolean, busy: boolean): void {
 
 function setBadgerVersion(version: string | undefined): void {
   const value = typeof version === "string" ? version.trim() : "";
-  badgerVersion.textContent = value ? `Badger ${value}` : "";
+  badgerVersion.textContent = value ? `Badger CLI: ${value}` : "";
   badgerVersion.classList.toggle("hidden", value === "");
 }
 

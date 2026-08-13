@@ -2,7 +2,7 @@
   "name": "ai-badger",
   "displayName": "AI Badger",
   "description": "Copy files with paths for any AI chat, or use the local Badger CLI to generate focused repository context.",
-  "version": "0.0.5",
+  "version": "0.1.0",
   "publisher": "pvrlabs",
   "license": "MIT",
   "icon": "media/ai-badger-icon.png",
@@ -39,7 +39,7 @@
         "title": "AI Badger: Ask About Project",
         "icon": {
           "light": "media/copy-two-step.svg",
-          "dark": "media/copy-two-step.svg"
+          "dark": "media/copy-two-step-dark.svg"
         }
       },
       {
@@ -47,7 +47,7 @@
         "title": "AI Badger: Ask About Folder",
         "icon": {
           "light": "media/copy-two-step.svg",
-          "dark": "media/copy-two-step.svg"
+          "dark": "media/copy-two-step-dark.svg"
         }
       },
       {
@@ -55,7 +55,7 @@
         "title": "AI Badger: Ask About File…",
         "icon": {
           "light": "media/copy-two-step.svg",
-          "dark": "media/copy-two-step.svg"
+          "dark": "media/copy-two-step-dark.svg"
         }
       },
       {
@@ -63,7 +63,7 @@
         "title": "AI Badger: Ask About Selected Files…",
         "icon": {
           "light": "media/copy-two-step.svg",
-          "dark": "media/copy-two-step.svg"
+          "dark": "media/copy-two-step-dark.svg"
         }
       },
       {
@@ -71,7 +71,7 @@
         "title": "AI Badger: Copy File for AI",
         "icon": {
           "light": "media/copy.svg",
-          "dark": "media/copy.svg"
+          "dark": "media/copy-dark.svg"
         }
       },
       {
@@ -79,7 +79,7 @@
         "title": "AI Badger: Copy Selected Files for AI",
         "icon": {
           "light": "media/copy.svg",
-          "dark": "media/copy.svg"
+          "dark": "media/copy-dark.svg"
         }
       },
       {
@@ -91,7 +91,7 @@
         "title": "AI Badger: Copy All Changes for Review",
         "icon": {
           "light": "media/copy.svg",
-          "dark": "media/copy.svg"
+          "dark": "media/copy-dark.svg"
         }
       },
       {
@@ -99,7 +99,7 @@
         "title": "AI Badger: Copy Workspace Changes for Review",
         "icon": {
           "light": "media/copy.svg",
-          "dark": "media/copy.svg"
+          "dark": "media/copy-dark.svg"
         }
       },
       {
@@ -107,7 +107,7 @@
         "title": "AI Badger: Deep Review",
         "icon": {
           "light": "media/copy-two-step.svg",
-          "dark": "media/copy-two-step.svg"
+          "dark": "media/copy-two-step-dark.svg"
         }
       }
     ],

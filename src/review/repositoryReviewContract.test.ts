@@ -62,9 +62,13 @@ suite("repository review action contract", () => {
   test("keeps contributed icon assets available", () => {
     const extensionRoot = path.resolve(__dirname, "../../");
     const copyActionIcon = "media/copy.svg";
+    const copyActionDarkIcon = "media/copy-dark.svg";
     const badgerActionIcon = "media/copy-two-step.svg";
+    const badgerActionDarkIcon = "media/copy-two-step-dark.svg";
     assert.equal(fs.existsSync(path.resolve(extensionRoot, copyActionIcon)), true);
+    assert.equal(fs.existsSync(path.resolve(extensionRoot, copyActionDarkIcon)), true);
     assert.equal(fs.existsSync(path.resolve(extensionRoot, badgerActionIcon)), true);
+    assert.equal(fs.existsSync(path.resolve(extensionRoot, badgerActionDarkIcon)), true);
 
     const packageJson = JSON.parse(
       fs.readFileSync(path.resolve(extensionRoot, "package.json"), "utf8")
@@ -80,11 +84,13 @@ suite("repository review action contract", () => {
     for (const command of [
       "aiBadger.copyFileForAI",
       "aiBadger.copyFilesForAI",
+      "aiBadger.copyAllChangesForReview",
+      "aiBadger.copyWorkspaceChangesForReview",
     ]) {
       const item = commands.find((candidate) => candidate.command === command);
       assert.deepEqual(item?.icon, {
         light: copyActionIcon,
-        dark: copyActionIcon,
+        dark: copyActionDarkIcon,
       });
     }
     for (const command of [
@@ -92,11 +98,12 @@ suite("repository review action contract", () => {
       "aiBadger.askAboutFolder",
       "aiBadger.askAboutFile",
       "aiBadger.askAboutSelectedFiles",
+      "aiBadger.deepReview",
     ]) {
       const item = commands.find((candidate) => candidate.command === command);
       assert.deepEqual(item?.icon, {
         light: badgerActionIcon,
-        dark: badgerActionIcon,
+        dark: badgerActionDarkIcon,
       });
     }
   });

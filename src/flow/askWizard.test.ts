@@ -77,6 +77,7 @@ suite("ask wizard webview html", () => {
     assert.ok(!html.includes("unsafe-inline"));
     assert.ok(html.includes("<title>{{SCRIPT_URI}}</title>"));
     assert.ok(html.includes("x={{TITLE}}"));
+    assert.ok(html.includes('class="logo"'));
     assert.ok(html.includes('"title":"{{CONFIG_JSON}}"'));
 
     const match = html.match(

@@ -1,0 +1,8 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" color="#C5C5C5">
+  <!-- Dark-theme action mark: clipboard with bold B and spark badge. -->
+  <rect x="3.6" y="5.6" width="13.4" height="15.6" rx="1.8" fill="currentColor" opacity="0.12" />
+  <rect x="3.6" y="5.6" width="13.4" height="15.6" rx="1.8" fill="none" stroke="currentColor" stroke-width="1.6" />
+  <path fill="currentColor" d="M7.5 3.7h5.2c.65 0 1.15.5 1.15 1.15v1.55H6.35V4.85c0-.65.5-1.15 1.15-1.15z" />
+  <path fill="currentColor" d="M7.75 9h2.9c1.48 0 2.42.8 2.42 2 0 .8-.42 1.42-1.12 1.72.85.3 1.4 1.02 1.4 2.05 0 1.35-1.05 2.18-2.7 2.18H7.75V9zm1.48 1.2v1.8h1.12c.65 0 1.05-.32 1.05-.9s-.4-.9-1.05-.9h-1.12zm0 3v2.08h1.3c.72 0 1.18-.38 1.18-1.05 0-.68-.46-1.03-1.18-1.03h-1.3z" />
+  <path fill="currentColor" d="M20.35.1l.78 2.35 2.35.78-2.35.78-.78 2.35-.78-2.35-2.35-.78 2.35-.78z" />
+</svg>

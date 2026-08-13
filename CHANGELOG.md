@@ -2,7 +2,7 @@
 
 All notable changes to the AI Badger VS Code extension are documented here.
 
-## Unreleased
+## [0.1.0] - Unreleased
 
 ## [0.0.4] - 2026-08-11
 

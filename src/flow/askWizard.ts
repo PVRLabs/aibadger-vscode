@@ -115,7 +115,7 @@ export type AskWizardOptions = {
 };
 
 /** Packaged brand mark shown in the wizard header. */
-export const WIZARD_LOGO_MEDIA_PATH = "media/ai-badger-logo.jpg";
+export const WIZARD_LOGO_MEDIA_PATH = "media/ai-badger-logo-transparent.png";
 
 type FromWebview = AskWizardContract.ToHostMessage;
 
@@ -180,7 +180,7 @@ export function showAskWizard(
     );
 
     const logoSrc = panel.webview
-      .asWebviewUri(vscode.Uri.joinPath(mediaRoot, "ai-badger-logo.jpg"))
+      .asWebviewUri(vscode.Uri.joinPath(mediaRoot, "ai-badger-logo-transparent.png"))
       .toString();
     const stylesheetUri = panel.webview
       .asWebviewUri(vscode.Uri.joinPath(webviewAssetRoot, "styles.css"))

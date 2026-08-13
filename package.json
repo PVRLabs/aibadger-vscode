@@ -1,7 +1,7 @@
 {
   "name": "ai-badger",
   "displayName": "AI Badger",
-  "description": "Copy files with paths for any AI chat, or use the local Badger CLI to generate focused repository context.",
+  "description": "Review Git changes or copy focused code context into any AI chat, with optional repository-aware workflows powered by the local Badger CLI.",
   "version": "0.1.0",
   "publisher": "pvrlabs",
   "license": "MIT",

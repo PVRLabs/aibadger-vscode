@@ -2,7 +2,14 @@
 
 All notable changes to the AI Badger VS Code extension are documented here.
 
-## [0.1.0] - Unreleased
+## [0.1.0] - 2026-08-14
+
+- Refreshed the extension's review-first Marketplace description and product
+  branding for the `0.1.0` release.
+- Added theme-aware light and dark icons for Copy, Two-Step Copy, repository
+  review, workspace review, and Deep Review actions.
+- Updated the Ask and Deep Review panels to use the transparent AI Badger logo
+  and label the detected local executable version as **Badger CLI**.
 
 ## [0.0.4] - 2026-08-11
 

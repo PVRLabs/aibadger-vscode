@@ -12,6 +12,8 @@ Quick file copying works immediately without the Badger CLI. Smart context uses 
 
 [▶ Try the AI Badger Interactive Demo](https://pvrlabs.xyz/aibadger/demo.html)
 
+[Read: Reviewing AI-Generated Code in VS Code with AI Badger](https://pvrlabs.xyz/articles/reviewing-ai-generated-code-vscode-aibadger.html)
+
 <!-- TODO: Replace this interactive demo link with a VS Code-specific GIF showing the Explorer workflow when one is available. -->
 
 ## Why AI Badger?

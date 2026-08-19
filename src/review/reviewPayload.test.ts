@@ -169,7 +169,7 @@ suite("buildReviewPayload", () => {
     assert.match(result.payload, /Untracked Working-Tree Addition: new/);
   });
 
-  test("keeps sensitive untracked files path-only without opening them", async () => {
+  test("omits sensitive untracked paths and contents without opening them", async () => {
     let opens = 0;
     const result = await buildReviewPayload("", [
       { uri: uri("/repo/.azure/token.json"), relativePath: ".azure/token.json", changeKind: "untracked" },
@@ -178,8 +178,8 @@ suite("buildReviewPayload", () => {
     if (!result.ok) return;
     assert.equal(opens, 0);
     assert.deepEqual(result.includedFiles, []);
-    assert.deepEqual(result.statuses, [{ path: ".azure/token.json", reason: "sensitive file excluded from full-file context" }]);
-    assert.match(result.payload, /\.azure\/token\.json — path only: sensitive file excluded/);
+    assert.deepEqual(result.statuses, []);
+    assert.doesNotMatch(result.payload, /\.azure\/token\.json/);
     assert.doesNotMatch(result.payload, /secret/);
   });
 

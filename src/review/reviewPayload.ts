@@ -213,15 +213,18 @@ export async function buildReviewPayload(
   deps: ReviewPayloadReadDeps = {}
 ): Promise<ReviewPayloadResult> {
   const maxPayloadBytes = deps.maxPayloadBytes ?? MAX_REVIEW_PAYLOAD_BYTES;
+  const reviewFiles = files.filter((file) =>
+    file.changeKind !== "untracked" || !isSensitivePath(file.relativePath)
+  );
   const fixedStatuses: ReviewFileStatus[] = [];
   const candidates: OptionalCandidate[] = [];
-  const additionalBlocks = files
+  const additionalBlocks = reviewFiles
     .filter((file) => file.isBinary && !file.isDeleted && file.changeKind !== "deleted")
     .map(binaryBlock);
   const openFile = deps.openFile ?? openReviewFile;
-  const untrackedPaths = new Set(files.filter((file) => file.changeKind === "untracked").map((file) => file.relativePath));
+  const untrackedPaths = new Set(reviewFiles.filter((file) => file.changeKind === "untracked").map((file) => file.relativePath));
 
-  for (const file of files) {
+  for (const file of reviewFiles) {
     const fixedReason = file.isBinary
       ? `${changeLabel(file)} binary file`
       : file.isDeleted ? "deleted"
@@ -237,7 +240,7 @@ export async function buildReviewPayload(
     return { ok: false, reason: "mandatory-overflow", byteLength: byteLength(mandatory) };
   }
 
-  for (const file of files) {
+  for (const file of reviewFiles) {
     const fixedReason = file.isBinary
       ? `${changeLabel(file)} binary file`
       : file.isDeleted ? "deleted"
@@ -297,7 +300,7 @@ export async function buildReviewPayload(
       selected.add(candidate.file.relativePath);
     }
 
-    statuses = files.flatMap((file) => {
+    statuses = reviewFiles.flatMap((file) => {
       const fixed = fixedStatusByPath.get(file.relativePath);
       if (fixed) return [fixed];
       const index = candidateIndexByPath.get(file.relativePath);

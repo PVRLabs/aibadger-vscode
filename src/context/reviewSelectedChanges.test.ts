@@ -346,7 +346,7 @@ suite("reviewSelectedChanges", () => {
     }
   });
 
-  test("passes nested untracked metadata to the payload without a duplicate full-file block", async () => {
+  test("passes nested untracked metadata through the bounded complete-file policy", async () => {
     const root = mkdtempSync(join(tmpdir(), "ai-badger-review-untracked-"));
     const run = (args: string[]) => execFileSync("git", args, { cwd: root });
     try {
@@ -374,9 +374,9 @@ suite("reviewSelectedChanges", () => {
       assert.equal(harness.errors.length, 0);
       assert.equal(harness.copied.length, 1);
       assert.match(harness.copied[0], /\[REVIEW CONTEXT: SELECTED GIT DIFF\]/);
-      assert.match(harness.copied[0], /\+new file/);
-      assert.match(harness.copied[0], /new-directory\/nested\/new\.ts — diff only: untracked addition already complete in patch/);
-      assert.doesNotMatch(harness.copied[0], /Full File/);
+      assert.match(harness.copied[0], /Untracked Working-Tree Addition: new-directory\/nested\/new\.ts/);
+      assert.match(harness.copied[0], /new file/);
+      assert.doesNotMatch(harness.copied[0], /--- \/dev\/null/);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }

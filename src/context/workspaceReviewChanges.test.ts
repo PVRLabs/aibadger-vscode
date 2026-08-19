@@ -61,7 +61,7 @@ suite("copyWorkspaceChangesForReview", () => {
         return { ok: true, payload: result.payload, changedFiles: ["a.ts"], includedFiles: [], statuses: [] };
       },
       writeClipboard: async (text) => {
-        assert.ok(Buffer.byteLength(text, "utf8") <= 256 * 1024);
+        assert.ok(Buffer.byteLength(text, "utf8") <= 512 * 1024);
       },
       showInformationMessage: () => undefined,
       showErrorMessage: assert.fail,

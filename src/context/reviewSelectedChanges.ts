@@ -152,12 +152,15 @@ export async function reviewSelectedChanges(
       return;
     }
 
-    const diffPaths = resolved.value.files.flatMap((file) =>
-      metadata.changes.get(file.relativePath)?.diffPaths ?? [file.relativePath]
-    );
+    const diffPaths = resolved.value.files.flatMap((file) => {
+      const change = metadata.changes.get(file.relativePath);
+      return change?.changeKind === "untracked" ? [] : change?.diffPaths ?? [file.relativePath];
+    });
     stage = "Git diff";
     const generateDiff = deps.generateDiff ?? generateSelectedGitDiff;
-    const diff = await generateDiff(resolved.value.repositoryRoot, diffPaths, deps.git);
+    const diff = diffPaths.length > 0
+      ? await generateDiff(resolved.value.repositoryRoot, diffPaths, deps.git)
+      : { ok: true as const, patch: "", binaryPaths: [] };
     if (!diff.ok) {
       deps.showErrorMessage(errorMessage(diff.reason));
       return;

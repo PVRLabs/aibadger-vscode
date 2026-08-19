@@ -78,7 +78,7 @@ suite("buildRepositoryReviewPayload", () => {
       assert.match(result.payload, /renamed name\.ts/);
       assert.match(result.payload, /deleted-large\.bin — diff only: deleted/);
       assert.match(result.payload, /spaced name\.ts/);
-      assert.deepEqual(result.includedFiles, ["modified.ts", "renamed name.ts", "spaced name.ts"]);
+      assert.deepEqual(result.includedFiles, ["modified.ts", "new directory/untracked.ts", "renamed name.ts", "spaced name.ts"]);
     } finally {
       rmSync(root, { recursive: true, force: true });
     }
@@ -180,10 +180,10 @@ suite("buildRepositoryReviewPayload", () => {
       assert.equal(result.ok, true);
       if (result.ok) {
         assert.deepEqual(result.changedFiles, ["new file.ts"]);
-        assert.match(result.payload, /--- \/dev\/null/);
-        assert.match(result.payload, /\+untracked/);
-        assert.match(result.payload, /new file\.ts — diff only: untracked addition already complete in patch/);
-        assert.deepEqual(result.includedFiles, []);
+        assert.doesNotMatch(result.payload, /--- \/dev\/null/);
+        assert.match(result.payload, /Untracked Working-Tree Addition: new file\.ts/);
+        assert.match(result.payload, /untracked/);
+        assert.deepEqual(result.includedFiles, ["new file.ts"]);
       }
     } finally {
       rmSync(root, { recursive: true, force: true });

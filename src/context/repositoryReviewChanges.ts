@@ -58,6 +58,7 @@ function isRepositoryReviewScope(value: unknown): value is RepositoryReviewScope
 function orderedDiffPaths(changes: readonly GitChangeMetadata[]): string[] {
   const paths = new Set<string>();
   for (const change of changes) {
+    if (change.changeKind === "untracked") continue;
     for (const diffPath of change.diffPaths) paths.add(diffPath);
   }
   return [...paths];
@@ -107,7 +108,9 @@ export async function buildRepositoryReviewPayload(
   const changes = [...metadata.changes.values()];
   const diffPaths = orderedDiffPaths(changes);
   const generateDiff = deps.generateDiff ?? generateSelectedGitDiff;
-  const diff = await generateDiff(scope.repositoryRoot, diffPaths, deps.git);
+  const diff = diffPaths.length > 0
+    ? await generateDiff(scope.repositoryRoot, diffPaths, deps.git)
+    : { ok: true as const, patch: "", binaryPaths: [] };
   if (!diff.ok) {
     return diff.reason === "no-files" || diff.reason === "no-diff"
       ? { ok: false, reason: "no-change" }

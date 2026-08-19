@@ -44,7 +44,7 @@ suite("buildReviewPayload", () => {
     if (!result.ok) return;
     assert.ok(result.payload.startsWith(`[TASK]\n${REVIEW_TASK}`));
     assert.ok(result.payload.includes("[REVIEW CONTEXT: SELECTED GIT DIFF]\n```diff\ndiff text\n```"));
-    assert.ok(result.payload.includes("--- File: src/a.ts (Full File) ---"));
+    assert.ok(result.payload.includes("--- Current Working-Tree File: src/a.ts (Complete File) ---"));
     assert.ok(result.payload.endsWith("[FILE CONTEXT STATUS]\n"));
   });
 
@@ -155,16 +155,32 @@ suite("buildReviewPayload", () => {
     assert.ok(oversizedRequested.every((length) => length <= MAX_REVIEW_FILE_BYTES + 1));
   });
 
-  test("keeps diff-only statuses for deleted, added, untracked, and binary files", async () => {
+  test("keeps fixed statuses while including a small untracked addition", async () => {
     const result = await buildReviewPayload("d", [
       { uri: uri("/repo/deleted"), relativePath: "deleted", changeKind: "deleted" },
       { uri: uri("/repo/added"), relativePath: "added", changeKind: "tracked-added" },
       { uri: uri("/repo/new"), relativePath: "new", changeKind: "untracked" },
       { uri: uri("/repo/bin"), relativePath: "bin", changeKind: "binary" },
-    ]);
+    ], { openFile: async () => fakeHandle(new TextEncoder().encode("new content\n")) });
     assert.equal(result.ok, true);
     if (!result.ok) return;
-    assert.deepEqual(result.statuses.map((status) => status.path), ["deleted", "added", "new", "bin"]);
+    assert.deepEqual(result.statuses.map((status) => status.path), ["deleted", "added", "bin"]);
+    assert.deepEqual(result.includedFiles, ["new"]);
+    assert.match(result.payload, /Untracked Working-Tree Addition: new/);
+  });
+
+  test("keeps sensitive untracked files path-only without opening them", async () => {
+    let opens = 0;
+    const result = await buildReviewPayload("", [
+      { uri: uri("/repo/.azure/token.json"), relativePath: ".azure/token.json", changeKind: "untracked" },
+    ], { openFile: async () => { opens += 1; return fakeHandle(new TextEncoder().encode("secret")); } });
+    assert.equal(result.ok, true);
+    if (!result.ok) return;
+    assert.equal(opens, 0);
+    assert.deepEqual(result.includedFiles, []);
+    assert.deepEqual(result.statuses, [{ path: ".azure/token.json", reason: "sensitive file excluded from full-file context" }]);
+    assert.match(result.payload, /\.azure\/token\.json — path only: sensitive file excluded/);
+    assert.doesNotMatch(result.payload, /secret/);
   });
 
   test("escapes control characters in AI-facing status paths", async () => {

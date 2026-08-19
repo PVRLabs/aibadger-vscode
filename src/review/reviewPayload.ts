@@ -90,8 +90,11 @@ async function openReviewFile(path: string): Promise<ReviewFileHandle> {
   return handle as unknown as ReviewFileHandle;
 }
 
-function fileBlock(path: string, contents: string): string {
-  return `--- File: ${path} (Full File) ---\n${literalFence("text", contents)}\n--- End File ---`;
+function fileBlock(file: ReviewPayloadFile, contents: string): string {
+  const label = file.changeKind === "untracked"
+    ? "Untracked Working-Tree Addition"
+    : "Current Working-Tree File";
+  return `--- ${label}: ${escapeReviewPath(file.relativePath)} (Complete File) ---\n${literalFence("text", contents)}\n--- End File ---`;
 }
 
 function literalFence(language: string, contents: string): string {
@@ -101,10 +104,10 @@ function literalFence(language: string, contents: string): string {
   return `${fence}${language}\n${contents}${ending}${fence}`;
 }
 
-function statusBlock(statuses: readonly ReviewFileStatus[]): string {
+function statusBlock(statuses: readonly ReviewFileStatus[], untrackedPaths: ReadonlySet<string>): string {
   return [
     "[FILE CONTEXT STATUS]",
-    ...statuses.map((status) => `- ${escapeReviewPath(status.path)} — diff only: ${status.reason}`),
+    ...statuses.map((status) => `- ${escapeReviewPath(status.path)} — ${untrackedPaths.has(status.path) ? "path only" : "diff only"}: ${status.reason}`),
   ].join("\n");
 }
 
@@ -151,14 +154,15 @@ function render(
   diff: string,
   blocks: readonly string[],
   additionalBlocks: readonly string[],
-  statuses: readonly ReviewFileStatus[]
+  statuses: readonly ReviewFileStatus[],
+  untrackedPaths: ReadonlySet<string>
 ): string {
   return [
     `[TASK]\n${REVIEW_TASK}`,
     `[REVIEW CONTEXT: SELECTED GIT DIFF]\n${literalFence("diff", diff)}`,
     ...(additionalBlocks.length > 0 ? [`[ADDITIONAL CONTEXT]\n${additionalBlocks.join("\n\n")}`] : []),
     ...(blocks.length > 0 ? [`[CONTEXT]\n${blocks.join("\n\n")}`] : []),
-    statusBlock(statuses),
+    statusBlock(statuses, untrackedPaths),
   ].join("\n\n") + "\n";
 }
 
@@ -176,10 +180,19 @@ function statusFor(kind: ReviewChangeKind | undefined): string | undefined {
   switch (kind) {
     case "deleted": return "deleted";
     case "tracked-added": return "tracked newly added file already complete in patch";
-    case "untracked": return "untracked addition already complete in patch";
     case "binary": return "binary file";
     default: return undefined;
   }
+}
+
+function isSensitivePath(relativePath: string): boolean {
+  const normalized = relativePath.replaceAll("\\", "/").toLowerCase();
+  const rooted = `/${normalized}`;
+  const base = normalized.split("/").at(-1) ?? "";
+  if ([".env.example", ".env.template", ".env.sample"].includes(base)) return false;
+  if ([".env", ".npmrc", ".pypirc", ".netrc", "credentials", "credentials.json", "secret.json", "secrets.json", "id_rsa", "id_dsa", "id_ecdsa", "id_ed25519"].includes(base)) return true;
+  if (base.startsWith(".env.") || /\.(pem|key|p12|pfx|kubeconfig)$/.test(base) || /_(rsa|dsa|ecdsa|ed25519)$/.test(base)) return true;
+  return rooted.includes("/.azure/") || rooted.endsWith("/.azure") || /\/(\.aws\/(credentials|config)|\.gcp\/credentials\.json)$/.test(rooted);
 }
 
 type OptionalCandidate = {
@@ -206,17 +219,20 @@ export async function buildReviewPayload(
     .filter((file) => file.isBinary && !file.isDeleted && file.changeKind !== "deleted")
     .map(binaryBlock);
   const openFile = deps.openFile ?? openReviewFile;
+  const untrackedPaths = new Set(files.filter((file) => file.changeKind === "untracked").map((file) => file.relativePath));
 
   for (const file of files) {
     const fixedReason = file.isBinary
       ? `${changeLabel(file)} binary file`
-      : file.isDeleted ? "deleted" : statusFor(file.changeKind);
+      : file.isDeleted ? "deleted"
+        : isSensitivePath(file.relativePath) ? "sensitive file excluded from full-file context"
+          : statusFor(file.changeKind);
     if (fixedReason) {
       fixedStatuses.push({ path: file.relativePath, reason: fixedReason });
     }
   }
 
-  const mandatory = render(diff, [], additionalBlocks, fixedStatuses);
+  const mandatory = render(diff, [], additionalBlocks, fixedStatuses, untrackedPaths);
   if (byteLength(mandatory) > maxPayloadBytes) {
     return { ok: false, reason: "mandatory-overflow", byteLength: byteLength(mandatory) };
   }
@@ -224,7 +240,9 @@ export async function buildReviewPayload(
   for (const file of files) {
     const fixedReason = file.isBinary
       ? `${changeLabel(file)} binary file`
-      : file.isDeleted ? "deleted" : statusFor(file.changeKind);
+      : file.isDeleted ? "deleted"
+        : isSensitivePath(file.relativePath) ? "sensitive file excluded from full-file context"
+          : statusFor(file.changeKind);
     if (fixedReason) continue;
     let readResult: BoundedReadResult;
     try {
@@ -252,7 +270,7 @@ export async function buildReviewPayload(
     }
     candidates.push({
       file,
-      block: fileBlock(file.relativePath, new TextDecoder().decode(bytes)),
+      block: fileBlock(file, new TextDecoder().decode(bytes)),
     });
   }
 
@@ -269,7 +287,7 @@ export async function buildReviewPayload(
     for (const [index, candidate] of candidates.entries()) {
       if (index >= excludedFrom) break;
       const nextBlocks = [...blocks, candidate.block];
-      const next = render(diff, nextBlocks, additionalBlocks, fixedStatuses);
+      const next = render(diff, nextBlocks, additionalBlocks, fixedStatuses, untrackedPaths);
       if (byteLength(next) > maxPayloadBytes) {
         excludedFrom = index;
         break;
@@ -287,7 +305,7 @@ export async function buildReviewPayload(
         ? [{ path: file.relativePath, reason: "total review-context budget reached" }]
         : [];
     });
-    const payload = render(diff, blocks, additionalBlocks, statuses);
+    const payload = render(diff, blocks, additionalBlocks, statuses, untrackedPaths);
     if (byteLength(payload) <= maxPayloadBytes) {
       return { ok: true, payload, includedFiles, statuses };
     }

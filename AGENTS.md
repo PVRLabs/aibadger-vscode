@@ -13,14 +13,11 @@ for changed behavior and avoid unrelated package, build, or dependency edits.
 
 Use pinned dependencies from `package-lock.json`.
 
-```bash
-npm-lite run verify       # compile, lint, and unit tests
-npm-lite run test:unit    # compile and unit tests
-```
+For routine compile, lint, and unit-test verification, follow the `lite-tools`
+skill.
 
 Run `npm test` only when VS Code integration testing is specifically needed;
-it launches the integration-test host. Use direct npm for scripts not covered
-by `npm-lite`, such as packaging a VSIX.
+it launches the integration-test host. Use direct npm for packaging a VSIX.
 
 Keep generated `out/` and other build artifacts out of commits unless tracked
 by the repository.

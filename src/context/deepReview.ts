@@ -62,8 +62,10 @@ export async function prepareDeepReviewPrompt(
     };
   }
 
+  const payloadBytes = Buffer.byteLength(result.prompt, "utf8");
+
   if (!provider) {
-    deps.showInformationMessage(promptCopiedMessage());
+    deps.showInformationMessage(promptCopiedMessage(payloadBytes));
     return {
       ok: true,
       ...(result.badgerVersion ? { badgerVersion: result.badgerVersion } : {}),
@@ -73,8 +75,8 @@ export async function prepareDeepReviewPrompt(
   const opened = await deps.openExternal(provider.url);
   deps.showInformationMessage(
     opened
-      ? promptCopiedOpenedMessage(provider.name)
-      : promptCopiedOpenFailedMessage(provider.name)
+      ? promptCopiedOpenedMessage(provider.name, payloadBytes)
+      : promptCopiedOpenFailedMessage(provider.name, payloadBytes)
   );
   return {
     ok: true,

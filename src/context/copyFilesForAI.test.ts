@@ -129,6 +129,10 @@ suite("copyFilesForAI", () => {
     await copyFilesForAI(undefined, undefined, harness.deps);
     assert.strictEqual(harness.clipboard.length, 1);
     assert.ok(harness.clipboard[0].includes("src/active.ts"));
+    assert.strictEqual(
+      harness.infos[0],
+      copySuccessMessage(1, Buffer.byteLength(harness.clipboard[0], "utf8"))
+    );
   });
 
   test("copies one open file and finishes without another interaction", async () => {
@@ -136,9 +140,11 @@ suite("copyFilesForAI", () => {
     const file = uri("src/extension.ts");
     harness.setContents(file, "unsaved");
     await copyFilesForAI(file, [file], harness.deps);
-    assert.deepStrictEqual(harness.infos, [copySuccessMessage(1)]);
     assert.strictEqual(harness.clipboard.length, 1);
     assert.ok(harness.clipboard[0].includes("unsaved"));
+    assert.deepStrictEqual(harness.infos, [
+      copySuccessMessage(1, Buffer.byteLength(harness.clipboard[0], "utf8")),
+    ]);
     assert.strictEqual(harness.reads.length, 0);
   });
 
@@ -150,7 +156,9 @@ suite("copyFilesForAI", () => {
     assert.strictEqual(harness.clipboard.length, 1);
     assert.ok(harness.clipboard[0].indexOf("src/b.ts") < harness.clipboard[0].indexOf("src/a.ts"));
     assert.ok(!harness.clipboard[0].includes("[QUESTION]"));
-    assert.deepStrictEqual(harness.infos, [copySuccessMessage(2)]);
+    assert.deepStrictEqual(harness.infos, [
+      copySuccessMessage(2, Buffer.byteLength(harness.clipboard[0], "utf8")),
+    ]);
   });
 
   test("rejects files from different workspace folders", async () => {
@@ -243,5 +251,8 @@ suite("copyFilesForAI", () => {
     );
     assert.ok(harness.clipboard[0].includes("[EXCLUDED FILES]"));
     assert.ok(harness.clipboard[0].includes(TOTAL_PAYLOAD_EXCLUSION_REASON));
+    assert.deepStrictEqual(harness.infos, [
+      "Copied context for 5 selected files (1.0 MB). 3 files were listed but excluded by payload limits.",
+    ]);
   });
 });

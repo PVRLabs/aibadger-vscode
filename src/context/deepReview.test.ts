@@ -50,7 +50,10 @@ suite("prepareDeepReviewPrompt", () => {
     assert.deepEqual(h.calls, ["context:/repo:focus on races:true"]);
     assert.deepEqual(h.clipboard, ["  [TASK]\nreview\n"]);
     assert.deepEqual(h.opened, []);
-    assert.equal(h.messages[0], "AI Badger review prompt copied to clipboard.");
+    assert.equal(
+      h.messages[0],
+      "AI Badger review prompt copied to clipboard (16 B)."
+    );
   });
 
   test("copies before opening a provider and never puts the prompt in its URL", async () => {
@@ -76,6 +79,27 @@ suite("prepareDeepReviewPrompt", () => {
     assert.equal(order[0], "copy:  [TASK]\nreview\n");
     assert.equal(order[1], "open:https://chatgpt.com");
     assert.ok(!h.opened[0].includes("[TASK]"));
+    assert.deepEqual(h.messages, ["Prompt copied (16 B). ChatGPT opened."]);
+  });
+
+  test("reports payload size when copying succeeds but opening fails", async () => {
+    const h = harness();
+    h.deps.openExternal = async (url) => {
+      h.opened.push(url);
+      return false;
+    };
+
+    const result = await prepareDeepReviewPrompt(
+      "review",
+      { openProviderId: "claude" },
+      h.deps
+    );
+
+    assert.deepEqual(result, { ok: true });
+    assert.deepEqual(h.clipboard, ["  [TASK]\nreview\n"]);
+    assert.deepEqual(h.messages, [
+      "Prompt copied (16 B). Could not open Claude.",
+    ]);
   });
 
   test("does not write the clipboard when generation fails", async () => {

@@ -1,3 +1,5 @@
+import { formatPayloadSize } from "../shared/formatPayloadSize";
+
 /** Exact product UI strings shared by the extension workflow. */
 
 /** Shared wizard / dialog chrome. */
@@ -61,8 +63,8 @@ export function effectiveGoal(goal: string): string {
 export const PROMPT_COPIED_MESSAGE = "AI Badger prompt copied to clipboard.";
 
 /** Deep Review's equivalent success toast, kept separate from Ask wording. */
-export function promptCopiedMessage(): string {
-  return "AI Badger review prompt copied to clipboard.";
+export function promptCopiedMessage(payloadBytes: number): string {
+  return `AI Badger review prompt copied to clipboard (${formatPayloadSize(payloadBytes)}).`;
 }
 
 /**
@@ -77,16 +79,24 @@ export function copyAndOpenLabel(providerName: string): string {
 }
 
 /** Toast after successful copy + system-browser open. */
-export function promptCopiedOpenedMessage(providerName: string): string {
-  return `Prompt copied. ${providerName} opened.`;
+export function promptCopiedOpenedMessage(
+  providerName: string,
+  payloadBytes?: number
+): string {
+  const size = payloadBytes === undefined ? "" : ` (${formatPayloadSize(payloadBytes)})`;
+  return `Prompt copied${size}. ${providerName} opened.`;
 }
 
 /**
  * Toast when clipboard write succeeded but the browser open failed.
  * Copy is never blocked by a failed open.
  */
-export function promptCopiedOpenFailedMessage(providerName: string): string {
-  return `Prompt copied. Could not open ${providerName}.`;
+export function promptCopiedOpenFailedMessage(
+  providerName: string,
+  payloadBytes?: number
+): string {
+  const size = payloadBytes === undefined ? "" : ` (${formatPayloadSize(payloadBytes)})`;
+  return `Prompt copied${size}. Could not open ${providerName}.`;
 }
 
 /**

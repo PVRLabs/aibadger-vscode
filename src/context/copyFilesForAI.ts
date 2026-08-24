@@ -9,6 +9,7 @@ import {
   resolveExplorerSelection,
   type SelectionUri,
 } from "../selection/explorerSelection";
+import { formatPayloadSize } from "../shared/formatPayloadSize";
 
 export { resolveExplorerSelection } from "../selection/explorerSelection";
 
@@ -73,16 +74,6 @@ function binaryType(relativePath: string): string {
   return extension === "" ? "Binary" : extension.slice(1).toUpperCase();
 }
 
-function formatBinarySize(bytes: number): string {
-  if (bytes < 1000) {
-    return `${bytes} B`;
-  }
-  if (bytes < 1000 * 1000) {
-    return `${Math.round(bytes / 1000)} KB`;
-  }
-  return `${(bytes / (1000 * 1000)).toFixed(1)} MB`;
-}
-
 function decodeUtf8(bytes: Uint8Array): string | undefined {
   let text: string;
   try {
@@ -109,14 +100,15 @@ function binaryFile(
     index,
     path: relativePath,
     binaryType: binaryType(relativePath),
-    size: formatBinarySize(size),
+    size: formatPayloadSize(size),
   };
 }
 
-export function copySuccessMessage(count: number): string {
+export function copySuccessMessage(count: number, payloadBytes: number): string {
+  const size = formatPayloadSize(payloadBytes);
   return count === 1
-    ? "Copied 1 file to the clipboard. It is not shared until you paste it."
-    : `Copied ${count} files to the clipboard. They are not shared until you paste them.`;
+    ? `Copied 1 file to the clipboard (${size}). It is not shared until you paste it.`
+    : `Copied ${count} files to the clipboard (${size}). They are not shared until you paste them.`;
 }
 
 type IndexedContextFile = (AdditionalContextFile | BinaryContextFile) & {
@@ -160,15 +152,16 @@ function fitPayload(
 
 function copyResultMessage(
   selectedCount: number,
-  excludedCount: number
+  excludedCount: number,
+  payloadBytes: number
 ): string {
   if (excludedCount === 0) {
-    return copySuccessMessage(selectedCount);
+    return copySuccessMessage(selectedCount, payloadBytes);
   }
   const noun = excludedCount === 1 ? "file was" : "files were";
   return `Copied context for ${selectedCount} selected ${
     selectedCount === 1 ? "file" : "files"
-  }. ${excludedCount} ${noun} listed but excluded by payload limits.`;
+  } (${formatPayloadSize(payloadBytes)}). ${excludedCount} ${noun} listed but excluded by payload limits.`;
 }
 
 export async function copyFilesForAI(
@@ -268,7 +261,13 @@ export async function copyFilesForAI(
 
     const count = validated.length;
     await deps.writeClipboard(initial.payload);
-    deps.showInformationMessage(copyResultMessage(count, initial.excludedCount));
+    deps.showInformationMessage(
+      copyResultMessage(
+        count,
+        initial.excludedCount,
+        Buffer.byteLength(initial.payload, "utf8")
+      )
+    );
   } catch (error) {
     deps.showErrorMessage(
       error instanceof Error ? error.message : UNSUPPORTED_SELECTION_MESSAGE

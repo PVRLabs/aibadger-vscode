@@ -2,30 +2,38 @@
 
 ![AI Badger for VS Code ask workflow](https://raw.githubusercontent.com/PVRLabs/aibadger-vscode/main/media/ai-badger-vscode-step1.png)
 
-Copy files with their project-relative paths into ChatGPT, Claude, Grok, or another AI chat—directly from the VS Code Explorer.
+Bring focused repository context into ChatGPT, Claude, Grok, or another AI chat, directly from VS Code.
 
-When a larger question needs repository discovery, use AI Badger’s guided smart-context workflow to identify and copy only the code that matters.
+Start with **Deep Review** for repository-aware review of Git changes, use direct review actions for selected or workspace changes, or ask questions about focused code from the VS Code Explorer.
 
-**Local-first · AI-provider independent · No repository uploads**
+**Local-first · AI-provider independent · No automatic uploads**
 
-Quick file copying works immediately without the Badger CLI. Smart context uses the separately installed, open-source [AI Badger CLI](https://github.com/PVRLabs/aibadger) as its local engine. Neither workflow requires an AI-provider API key.
+Direct repository and workspace review work locally without the Badger CLI. **Deep Review** and the exploratory **Ask About** workflows use the separately installed, open-source [AI Badger CLI](https://github.com/PVRLabs/aibadger) as their local engine. No workflow requires an AI-provider API key.
 
-[▶ Try the AI Badger Interactive Demo](https://pvrlabs.xyz/aibadger/demo.html)
+[▶ Try the AI Badger VS Code Demo](https://pvrlabs.xyz/aibadger/vscode-demo.html)
 
 [Read: Reviewing AI-Generated Code in VS Code with AI Badger](https://pvrlabs.xyz/articles/reviewing-ai-generated-code-vscode-aibadger.html)
 
-<!-- TODO: Replace this interactive demo link with a VS Code-specific GIF showing the Explorer workflow when one is available. -->
+<!-- TODO: Replace this generic Ask workflow image with a VS Code-specific review screenshot or GIF when one is available. -->
 
 ## Why AI Badger?
 
-- **Useful immediately:** Copy selected files with their paths without installing a CLI.
+- **Review-first workflow:** Review selected changes, all changes in a repository, or changes across the workspace.
+- **Repository-aware review:** Deep Review uses the local Badger CLI to add focused topology and source context when needed.
+- **Useful immediately:** Review repository or workspace changes without installing the CLI.
 - **Explorer-native workflow:** Start from the project, folder, file, or multi-file selection already in VS Code.
 - **Focused context:** Give your AI chat the relevant code and a clear question instead of the whole repository.
-- **Local-first processing:** Direct copying stays in VS Code; smart context invokes the CLI on your machine.
+- **Local-first processing:** Review and context preparation happen in VS Code or through the CLI on your machine.
 - **Works with your AI chat:** Use the generated context with ChatGPT, Claude, Grok, or another AI chat.
 - **No provider key in the extension:** You choose where to paste the generated context.
 
 ## How it works
+
+### Review current changes
+
+1. Open the Source Control view for a Git repository with changes.
+2. Choose **AI Badger: Deep Review** and add optional guidance, or choose **Copy All Changes for Review** for a direct review request.
+3. Paste the copied request into your AI chat. Deep Review can optionally open the chat and can copy additional context when the AI requests specific files or symbols.
 
 ### Quick file copy
 
@@ -42,8 +50,9 @@ Quick file copying works immediately without the Badger CLI. Smart context uses 
 ## Install
 
 1. Install **AI Badger** from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=pvrlabs.ai-badger).
-2. Open a repository in desktop VS Code, then right-click a file to copy it for AI.
-3. To use smart project context, install the AI Badger CLI:
+2. Open a repository in desktop VS Code. Quick file copy works from the Explorer, and Ask About workflows can start from a project, folder, or file.
+3. For the recommended review workflow, open the Source Control view for a Git repository with changes and choose **AI Badger: Deep Review**, or choose **AI Badger: Copy All Changes for Review** for a direct review request.
+4. To use Deep Review or the exploratory Ask About workflows, install the AI Badger CLI:
 
    ```bash
    brew install pvrlabs/tap/badger
@@ -51,9 +60,11 @@ Quick file copying works immediately without the Badger CLI. Smart context uses 
 
    For Windows and other installation methods, see the [AI Badger installation guide](https://github.com/PVRLabs/aibadger/blob/main/docs/install.md).
 
-The extension is desktop-only; it is not a `vscode.dev` web extension.
+Direct repository and workspace review do not require the CLI. The extension is desktop-only; it is not a `vscode.dev` web extension.
 
 ## What you can do
+
+Review workflows are the primary use case. Start in Source Control with **Deep Review**, **Copy All Changes for Review**, or **Copy Selected Changes for Review**; the detailed review flows are described below. The Explorer workflows remain useful when you already know which code to share or want to ask a broader question.
 
 ### Copy files for an AI chat
 

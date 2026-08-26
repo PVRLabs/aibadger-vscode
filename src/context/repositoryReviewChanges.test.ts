@@ -18,6 +18,27 @@ function initializeRepository(repositoryRoot: string): void {
 }
 
 suite("buildRepositoryReviewPayload", () => {
+  test("passes the repository basename to the payload formatter", async () => {
+    const suppliedLabels: string[] = [];
+    const result = await buildRepositoryReviewPayload(scope("/private/parent/review repo"), {
+      statRepositoryRoot: async () => ({ isDirectory: true }),
+      getChangeMetadata: async () => ({
+        ok: true,
+        changes: new Map([[
+          "changed.ts",
+          { selectedPath: "changed.ts", changeKind: "modified" as const, diffPaths: ["changed.ts"] },
+        ]]),
+      }),
+      generateDiff: async () => ({ ok: true, patch: "diff" }),
+      buildPayload: async (_diff, _files, label) => {
+        suppliedLabels.push(label);
+        return { ok: true, payload: "payload", includedFiles: [], statuses: [] };
+      },
+    });
+    assert.equal(result.ok, true);
+    assert.deepEqual(suppliedLabels, ["review repo"]);
+  });
+
   test("returns typed invalid-root and clean-repository outcomes", async () => {
     const root = mkdtempSync(join(tmpdir(), "ai-badger-repository-review-clean-"));
     try {

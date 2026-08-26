@@ -18,11 +18,11 @@ suite("workspace review contract", () => {
     ]);
   });
 
-  test("disambiguates duplicate names without putting parent paths in labels", () => {
+  test("allows duplicate names without putting parent paths in labels", () => {
     const repositories = workspaceRepositories(["/private/b/api", "/private/a/api"]);
     assert.deepEqual(repositories.map(({ id, label }) => ({ id, label })), [
       { id: "repo-1", label: "api" },
-      { id: "repo-2", label: "api (2)" },
+      { id: "repo-2", label: "api" },
     ]);
     assert.equal(repositories.some(({ label }) => label.includes("/private")), false);
   });

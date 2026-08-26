@@ -2,6 +2,18 @@
 
 All notable changes to the AI Badger VS Code extension are documented here.
 
+## [Unreleased]
+
+- Added basename-derived `[REPOSITORY: <label>]` markers to direct and
+  workspace review payloads while preserving Deep Review's verbatim Badger
+  output.
+- Improved direct review handling for untracked changes by including eligible
+  working-tree content while excluding sensitive paths without reading them.
+- Expanded direct and workspace review limits to 512 KiB per request and 64 KiB
+  per optional file.
+- Added copied payload sizes to file-copy, direct-review, and Deep Review
+  success notifications.
+
 ## [0.1.0] - 2026-08-14
 
 - Refreshed the extension's review-first Marketplace description and product

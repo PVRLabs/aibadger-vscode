@@ -90,9 +90,21 @@ The project command is available from the Explorer toolbar. File and folder comm
 
 ### Copy selected changes for review
 
-In a Git repository, select one or more changed files in Source Control, right-click, and choose **AI Badger: Copy Selected Changes for Review**. The extension copies a review request containing the selected files' complete Git diff. Small, readable modified files may also be included in full; deleted, added, untracked, binary, unavailable, or oversized files remain diff-only. Git's staged, unstaged, mixed, deleted, renamed, and untracked changes are represented by the selected diff, and unrelated files are not included.
+In a Git repository, select one or more changed files in Source Control, right-click, and choose **AI Badger: Copy Selected Changes for Review**. The extension copies a review request containing the selected files' complete Git diff. Small, readable modified, renamed, and non-sensitive untracked text files may also be included in full. Tracked additions and deleted files remain represented by Git's diff; binary contents are excluded; unavailable, changed, or oversized files are reported without full content; and sensitive untracked paths are omitted. Git's staged, unstaged, mixed, deleted, renamed, and untracked changes are represented by the selected diff, and unrelated files are not included.
 
-The complete clipboard request is limited to 256 KiB, and optional full-file context is limited to 32 KiB per file. Binary file contents and Git binary patch bodies are excluded; the selected diff retains Git's compact binary-change summary. For added, untracked, modified, and renamed binaries that still exist, `[ADDITIONAL CONTEXT]` records the path, change kind, and inferred type. Deleted binaries rely on Git's deletion summary. If the mandatory framing and diff exceed 256 KiB, select fewer files. Nothing is shared until you paste the clipboard contents into an AI chat.
+Each direct review request places `[REPOSITORY: <label>]` after the task
+framing and immediately before the repository review context. The label is
+the sanitized local repository directory basename only; it is bounded to 128
+UTF-8 bytes, kept on one line, and uses `repository` for an empty or root-like
+basename. It is display metadata, not a repository identity. The marker, all
+framing, and the diff count toward the 512 KiB request limit; optional full-file
+context remains limited to 64 KiB per file. Binary file contents and Git
+binary patch bodies are excluded; the selected diff retains Git's compact
+binary-change summary. For added, untracked, modified, and renamed binaries
+that still exist, `[ADDITIONAL CONTEXT]` records the path, change kind, and
+inferred type. Deleted binaries rely on Git's deletion summary. If the
+mandatory framing and diff exceed 512 KiB, select fewer files. Nothing is
+shared until you paste the clipboard contents into an AI chat.
 
 ### Copy all changes for review
 
@@ -100,11 +112,12 @@ From a Git repository in the Source Control view, choose **AI Badger: Copy All C
 
 For a multi-repository workspace, choose **AI Badger: Copy Workspace Changes
 for Review** from the Command Palette or the aggregate **Changes** title. It
-copies one request with a clearly labeled section for every open Git repository
-that currently has changes. Duplicate repository folder names are numbered so
-same-named files remain attributable to the correct repository. The operation
-has no picker and is atomic: if any included repository cannot be prepared or
-the complete request does not fit, the clipboard is left unchanged.
+copies one request with an outer review task and a `[REPOSITORY: <label>]`
+section for every open Git repository that currently has changes. Labels use
+only local repository directory basenames; duplicate basenames may produce
+identical labels. The operation has no picker and is atomic: if any included
+repository cannot be prepared or the complete request does not fit, the
+clipboard is left unchanged.
 
 These Git Source Control actions are available from the repository actions and
 the **Changes** group. Both require an explicit user action; nothing is sent
@@ -113,10 +126,25 @@ anywhere automatically.
 | Icon | Source Control action | Current behavior |
 | --- | --- | --- |
 | <img src="media/copy-readme.png" alt="Direct copy" width="16" height="16"> | **AI Badger: Copy All Changes for Review** | Copies the repository review request to the clipboard. |
-| <img src="media/copy-readme.png" alt="Direct copy" width="16" height="16"> | **AI Badger: Copy Workspace Changes for Review** | Copies all changed open Git repositories as one repository-qualified request. |
+| <img src="media/copy-readme.png" alt="Direct copy" width="16" height="16"> | **AI Badger: Copy Workspace Changes for Review** | Copies all changed open Git repositories as one marked, repository-scoped request. |
 | <img src="media/copy-two-step-readme.png" alt="Two-step copy" width="16" height="16"> | **AI Badger: Deep Review** | Opens editable guidance and, after Copy, asks local Badger for a topology-aware review request. |
 
-Direct repository and workspace review use a 256 KiB complete-request limit and a 32 KiB per-file limit for optional complete text context. Workspace review divides the optional-context capacity equally among its repository sections and reports omitted file context. **Deep Review** uses Badger's defaults of 512 KiB and 64 KiB respectively unless a caller explicitly supplies different limits. These flows preserve the authoritative diff and omit binary contents while retaining compact Git change summaries. A clean repository or workspace has no changes to copy. Workspace review is implemented entirely by the extension and does not invoke Badger. Badger CLI v0.4.0 is the first released version supporting the separate Deep Review operations `api review-context --include-topology` and `api review-continuation`; compatibility remains capability-based, and missing or incompatible executables use the normal recovery flow without a topology-free fallback. Nothing is shared until you explicitly copy and paste the generated request into an AI chat.
+Direct repository, workspace, and Deep Review use 512 KiB complete-request
+limits and 64 KiB per-file limits for optional complete text context. Workspace
+review counts section markers and separators in that limit, divides the
+optional-context capacity equally among its repository sections, and reports
+omitted file context within each section. Deep Review's limits are Badger-owned
+and may be explicitly overridden by a caller; successful marked CLI output is
+copied verbatim and is not double-framed by the extension. These flows preserve
+the authoritative diff and omit binary contents while retaining compact Git
+change summaries. A clean repository or workspace has no changes to copy.
+Workspace review is implemented entirely by the extension and does not invoke
+Badger. Badger CLI v0.4.0 is the first released version supporting the separate
+Deep Review operations `api review-context --include-topology` and
+`api review-continuation`; compatibility remains capability-based, and missing
+or incompatible executables use the normal recovery flow without a
+topology-free fallback. Nothing is shared until you explicitly copy and paste
+the generated request into an AI chat.
 
 Deep Review may receive final findings immediately. If the AI instead responds with only valid `FILE:`, `PREFIX:`, or `NEAR:` selectors, choose **Continue Review** to copy current supplemental context from the same repository. Findings-only responses finish locally; mixed or malformed responses remain editable. Supplemental context is stateless and may reflect newer filesystem state than the initial review request.
 

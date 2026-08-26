@@ -134,12 +134,13 @@ same changed relative path when practical. Confirm **AI Badger: Copy Workspace
 Changes for Review** appears once beside the aggregate **Changes** title, does
 not appear on repository rows, and is available from the Command Palette.
 
-Invoke both surfaces. Expected result: one clipboard request contains a
-deterministic, repository-qualified section for every changed open repository;
-duplicate names are numbered, same-named files stay in their own sections, and
-clean repositories are absent. The action opens no wizard or provider and does
-not run Badger. If one repository fails preparation, the aggregate request is
-too large, or the clipboard write fails, the previous clipboard value remains
+Invoke both surfaces. Expected result: one clipboard request contains one outer
+task and a `[REPOSITORY: <label>]` section for every changed open repository;
+labels use only local repository directory basenames, so duplicate names may
+be identical, while same-named files remain in their own sections and clean
+repositories are absent. The action opens no wizard or provider and does not
+run Badger. If one repository fails preparation, the aggregate request is too
+large, or the clipboard write fails, the previous clipboard value remains
 unchanged and no success message appears.
 
 ### 3. Guidance panel and consent boundary

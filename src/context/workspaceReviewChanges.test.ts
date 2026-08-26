@@ -6,15 +6,45 @@ import {
   WORKSPACE_REVIEW_NO_CHANGE_MESSAGE,
   WORKSPACE_REVIEW_OVERFLOW_MESSAGE,
 } from "./workspaceReviewChanges";
+import { repositoryLabel } from "../review/reviewPayload";
 
 suite("copyWorkspaceChangesForReview", () => {
-  test("copies one repository-qualified aggregate payload atomically", async () => {
+  test("keeps one outer task and scopes each repository section under its marker", async () => {
+    const copied: string[] = [];
+    await copyWorkspaceChangesForReview(["/work/web", "/work/api"], {
+      buildRepository: async (scope) => ({
+        ok: true,
+        payload: [
+          `[REPOSITORY: ${repositoryLabel(scope.repositoryRoot)}]`,
+          "[REVIEW CONTEXT: SELECTED GIT DIFF]",
+          `diff for ${scope.repositoryId}`,
+          "[CONTEXT]",
+          `complete file for ${scope.repositoryId}`,
+          "[FILE CONTEXT STATUS]",
+          `status for ${scope.repositoryId}`,
+        ].join("\n"),
+        changedFiles: [`${scope.repositoryId}.ts`],
+        includedFiles: [],
+        statuses: [],
+      }),
+      writeClipboard: async (text) => { copied.push(text); },
+      showInformationMessage: () => undefined,
+      showErrorMessage: assert.fail,
+    });
+    assert.equal(copied.length, 1);
+    assert.equal((copied[0].match(/\[TASK\]/g) ?? []).length, 1);
+    assert.equal((copied[0].match(/\[REPOSITORY: (?:web|api)\]/g) ?? []).length, 2);
+    assert.match(copied[0], /\[REPOSITORY: api\][\s\S]*diff for repo-1[\s\S]*status for repo-1/);
+    assert.match(copied[0], /\[REPOSITORY: web\][\s\S]*diff for repo-2[\s\S]*status for repo-2/);
+  });
+
+  test("copies one marked aggregate payload atomically", async () => {
     const copied: string[] = [];
     const info: string[] = [];
     await copyWorkspaceChangesForReview(["/z/api", "/a/web"], {
       buildRepository: async (scope) => ({
         ok: true,
-        payload: `payload for ${scope.repositoryId}`,
+        payload: `[REPOSITORY: ${repositoryLabel(scope.repositoryRoot)}]\npayload for ${scope.repositoryId}`,
         changedFiles: [`${scope.repositoryId}.ts`],
         includedFiles: [],
         statuses: [],
@@ -24,8 +54,8 @@ suite("copyWorkspaceChangesForReview", () => {
       showErrorMessage: assert.fail,
     });
     assert.equal(copied.length, 1);
-    assert.match(copied[0], /\[REPOSITORY repo-1: web\]/);
-    assert.match(copied[0], /\[REPOSITORY repo-2: api\]/);
+    assert.match(copied[0], /\[REPOSITORY: web\]/);
+    assert.match(copied[0], /\[REPOSITORY: api\]/);
     assert.match(info[0], /2 repositories and 2 changed files/);
   });
 
@@ -34,7 +64,7 @@ suite("copyWorkspaceChangesForReview", () => {
     await copyWorkspaceChangesForReview(["/work/one/api", "/work/two/api"], {
       buildRepository: async (scope) => ({
         ok: true,
-        payload: `[REVIEW CONTEXT: SELECTED GIT DIFF]\n--- a/src/index.ts\n+++ b/src/index.ts\n+${scope.repositoryId}\n`,
+        payload: `[REPOSITORY: ${repositoryLabel(scope.repositoryRoot)}]\n[REVIEW CONTEXT: SELECTED GIT DIFF]\n--- a/src/index.ts\n+++ b/src/index.ts\n+${scope.repositoryId}\n`,
         changedFiles: ["src/index.ts"],
         includedFiles: [],
         statuses: [],
@@ -45,8 +75,9 @@ suite("copyWorkspaceChangesForReview", () => {
     });
 
     assert.equal(copied.length, 1);
-    assert.match(copied[0], /\[REPOSITORY repo-1: api\][\s\S]*\+repo-1/);
-    assert.match(copied[0], /\[REPOSITORY repo-2: api \(2\)\][\s\S]*\+repo-2/);
+    assert.equal((copied[0].match(/\[REPOSITORY: api\]/g) ?? []).length, 2);
+    assert.match(copied[0], /\[REPOSITORY: api\][\s\S]*\+repo-1/);
+    assert.match(copied[0], /\[REPOSITORY: api\][\s\S]*\+repo-2/);
     assert.equal((copied[0].match(/src\/index\.ts/g) ?? []).length, 4);
   });
 
@@ -55,7 +86,7 @@ suite("copyWorkspaceChangesForReview", () => {
     await copyWorkspaceChangesForReview(["/a", "/b", "/c"], {
       buildRepository: async (_scope, deps) => {
         assert.ok(deps?.buildPayload);
-        const result = await deps.buildPayload("x".repeat(80 * 1024), []);
+        const result = await deps.buildPayload("x".repeat(80 * 1024), [], "repo");
         assert.ok(result.ok);
         payloadSizes.push(Buffer.byteLength(result.payload, "utf8"));
         return { ok: true, payload: result.payload, changedFiles: ["a.ts"], includedFiles: [], statuses: [] };
@@ -126,5 +157,24 @@ suite("copyWorkspaceChangesForReview", () => {
 
     assert.deepEqual(info, []);
     assert.deepEqual(errors, [WORKSPACE_REVIEW_COPY_FAILURE_MESSAGE]);
+  });
+
+  test("does not copy a near-limit aggregate when section framing overflows", async () => {
+    const copied: string[] = [];
+    const errors: string[] = [];
+    await copyWorkspaceChangesForReview(["/work/api"], {
+      buildRepository: async (scope) => ({
+        ok: true,
+        payload: `[REPOSITORY: ${repositoryLabel(scope.repositoryRoot)}]\n${"x".repeat(512 * 1024)}`,
+        changedFiles: ["api.ts"],
+        includedFiles: [],
+        statuses: [],
+      }),
+      writeClipboard: async (text) => { copied.push(text); },
+      showInformationMessage: () => undefined,
+      showErrorMessage: (message) => { errors.push(message); },
+    });
+    assert.deepEqual(copied, []);
+    assert.deepEqual(errors, [WORKSPACE_REVIEW_OVERFLOW_MESSAGE]);
   });
 });

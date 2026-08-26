@@ -10,6 +10,7 @@ import {
 import { formatByteSize } from "../flow/promptSummary";
 import {
   buildReviewPayload,
+  repositoryLabel,
   type ReviewChangeKind,
   type ReviewPayloadFile,
   type ReviewPayloadResult,
@@ -176,7 +177,11 @@ export async function reviewSelectedChanges(
     }));
     stage = "review payload";
     const buildPayload = deps.buildPayload ?? buildReviewPayload;
-    const payload: ReviewPayloadResult = await buildPayload(diff.patch, files);
+    const payload: ReviewPayloadResult = await buildPayload(
+      diff.patch,
+      files,
+      repositoryLabel(resolved.value.repositoryRoot)
+    );
     if (!payload.ok) {
       deps.showErrorMessage(
         "The selected review request is too large to copy. Select fewer files and try again."

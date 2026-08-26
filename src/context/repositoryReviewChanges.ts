@@ -8,6 +8,7 @@ import {
 } from "../git/gitDiff";
 import {
   buildReviewPayload,
+  repositoryLabel,
   type ReviewPayloadFile,
   type ReviewFileStatus,
 } from "../review/reviewPayload";
@@ -120,7 +121,11 @@ export async function buildRepositoryReviewPayload(
   const binaryPaths = new Set(diff.binaryPaths ?? []);
   const files = changes.map((change) => reviewFile(scope.repositoryRoot, change, binaryPaths));
   const buildPayload = deps.buildPayload ?? buildReviewPayload;
-  const payload = await buildPayload(diff.patch, files);
+  const payload = await buildPayload(
+    diff.patch,
+    files,
+    repositoryLabel(scope.repositoryRoot)
+  );
   if (!payload.ok) {
     return {
       ok: false,

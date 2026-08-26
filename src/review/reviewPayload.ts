@@ -21,6 +21,7 @@ export type ReviewPayloadFile = {
 export type ReviewPayloadReadDeps = {
   openFile?: (path: string) => Promise<ReviewFileHandle>;
   maxPayloadBytes?: number;
+  includeTask?: boolean;
 };
 
 type ReviewFileMetadata = {
@@ -43,6 +44,62 @@ export type ReviewFileStatus = { path: string; reason: string };
 
 function byteLength(value: string): number {
   return Buffer.byteLength(value, "utf8");
+}
+
+export const MAX_REPOSITORY_LABEL_BYTES = 128;
+const REPOSITORY_FALLBACK_LABEL = "repository";
+
+/** Derive display-only metadata from the supplied local repository root. */
+export function repositoryLabel(repositoryRoot: string): string {
+  return sanitizeRepositoryLabel(path.basename(path.normalize(repositoryRoot)));
+}
+
+/** Keep the repository marker bounded, one-line, and safe to frame. */
+export function sanitizeRepositoryLabel(label: string): string {
+  // Filesystem paths are decoded UTF-8, but replacing lone surrogates keeps
+  // this helper well-defined for callers and test vectors too.
+  const valid = label.replace(/[\uD800-\uDFFF]/gu, "_");
+  let sanitized = "";
+  for (const character of valid) {
+    const codePoint = character.codePointAt(0) ?? 0;
+    if (
+      codePoint <= 0x1f ||
+      (codePoint >= 0x7f && codePoint <= 0x9f) ||
+      codePoint === 0x2028 ||
+      codePoint === 0x2029 ||
+      character === "[" ||
+      character === "]" ||
+      character === ":"
+    ) {
+      sanitized += "_";
+    } else {
+      sanitized += character;
+    }
+  }
+  sanitized = truncateUtf8(sanitized, MAX_REPOSITORY_LABEL_BYTES);
+  if (
+    sanitized.trim() === "" ||
+    sanitized === "." ||
+    sanitized === ".." ||
+    sanitized === "/" ||
+    sanitized === "\\"
+  ) {
+    return REPOSITORY_FALLBACK_LABEL;
+  }
+  return sanitized;
+}
+
+function truncateUtf8(value: string, maxBytes: number): string {
+  if (Buffer.byteLength(value, "utf8") <= maxBytes) return value;
+  const characters = [...value];
+  while (Buffer.byteLength(characters.join(""), "utf8") > maxBytes) {
+    characters.pop();
+  }
+  return characters.join("");
+}
+
+function repositoryMarker(label: string): string {
+  return `[REPOSITORY: ${sanitizeRepositoryLabel(label)}]\n`;
 }
 
 function fullFileLimitDescription(): string {
@@ -155,15 +212,20 @@ function render(
   blocks: readonly string[],
   additionalBlocks: readonly string[],
   statuses: readonly ReviewFileStatus[],
-  untrackedPaths: ReadonlySet<string>
+  untrackedPaths: ReadonlySet<string>,
+  repositoryLabelValue: string,
+  includeTask: boolean
 ): string {
-  return [
-    `[TASK]\n${REVIEW_TASK}`,
+  const repositoryContent = [
     `[REVIEW CONTEXT: SELECTED GIT DIFF]\n${literalFence("diff", diff)}`,
     ...(additionalBlocks.length > 0 ? [`[ADDITIONAL CONTEXT]\n${additionalBlocks.join("\n\n")}`] : []),
     ...(blocks.length > 0 ? [`[CONTEXT]\n${blocks.join("\n\n")}`] : []),
     statusBlock(statuses, untrackedPaths),
   ].join("\n\n") + "\n";
+  const markedContent = repositoryMarker(repositoryLabelValue) + repositoryContent;
+  return includeTask
+    ? `[TASK]\n${REVIEW_TASK}\n${markedContent}`
+    : markedContent;
 }
 
 function isText(bytes: Uint8Array): boolean {
@@ -210,9 +272,11 @@ type OptionalCandidate = {
 export async function buildReviewPayload(
   diff: string,
   files: readonly ReviewPayloadFile[],
+  repositoryLabelValue: string,
   deps: ReviewPayloadReadDeps = {}
 ): Promise<ReviewPayloadResult> {
   const maxPayloadBytes = deps.maxPayloadBytes ?? MAX_REVIEW_PAYLOAD_BYTES;
+  const includeTask = deps.includeTask ?? true;
   const reviewFiles = files.filter((file) =>
     file.changeKind !== "untracked" || !isSensitivePath(file.relativePath)
   );
@@ -235,7 +299,15 @@ export async function buildReviewPayload(
     }
   }
 
-  const mandatory = render(diff, [], additionalBlocks, fixedStatuses, untrackedPaths);
+  const mandatory = render(
+    diff,
+    [],
+    additionalBlocks,
+    fixedStatuses,
+    untrackedPaths,
+    repositoryLabelValue,
+    includeTask
+  );
   if (byteLength(mandatory) > maxPayloadBytes) {
     return { ok: false, reason: "mandatory-overflow", byteLength: byteLength(mandatory) };
   }
@@ -290,7 +362,15 @@ export async function buildReviewPayload(
     for (const [index, candidate] of candidates.entries()) {
       if (index >= excludedFrom) break;
       const nextBlocks = [...blocks, candidate.block];
-      const next = render(diff, nextBlocks, additionalBlocks, fixedStatuses, untrackedPaths);
+      const next = render(
+        diff,
+        nextBlocks,
+        additionalBlocks,
+        fixedStatuses,
+        untrackedPaths,
+        repositoryLabelValue,
+        includeTask
+      );
       if (byteLength(next) > maxPayloadBytes) {
         excludedFrom = index;
         break;
@@ -308,7 +388,15 @@ export async function buildReviewPayload(
         ? [{ path: file.relativePath, reason: "total review-context budget reached" }]
         : [];
     });
-    const payload = render(diff, blocks, additionalBlocks, statuses, untrackedPaths);
+    const payload = render(
+      diff,
+      blocks,
+      additionalBlocks,
+      statuses,
+      untrackedPaths,
+      repositoryLabelValue,
+      includeTask
+    );
     if (byteLength(payload) <= maxPayloadBytes) {
       return { ok: true, payload, includedFiles, statuses };
     }

@@ -23,9 +23,12 @@ its temporary UTF-8 input files after each operation.
 
 Deep Review uses `review-context --include-topology` for one Git repository.
 Badger owns current Git inspection, topology/source-tree composition, review
-limits, and prompt formatting. Its defaults are 512 KiB for the complete prompt
-and 64 KiB per supporting file; the extension's direct-review 256 KiB/32 KiB
-limits do not apply to Deep Review. The extension copies successful stdout verbatim.
+limits, repository marker derivation, and prompt formatting. Its defaults are
+512 KiB for the complete prompt and 64 KiB per supporting file, matching the
+extension's direct-review limits. Successful stdout contains Badger's
+`[REPOSITORY: <label>]` marker immediately before the
+repository review context, after the task framing. The extension copies it
+byte-for-byte without adding, parsing, or double-framing it.
 It does not fall back to topology-free output when the requested operation or
 flag is unsupported; the normal executable recovery flow offers upgrade or
 executable selection. Selector-only continuation uses `review-continuation`,

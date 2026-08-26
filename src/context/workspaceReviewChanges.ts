@@ -15,10 +15,6 @@ export type WorkspaceReviewDeps = {
   showErrorMessage(message: string): void;
 };
 
-function header(id: string, label: string): string {
-  return `[REPOSITORY ${id}: ${label}]`;
-}
-
 export async function copyWorkspaceChangesForReview(
   changedRepositoryRoots: readonly string[],
   deps: WorkspaceReviewDeps
@@ -31,7 +27,7 @@ export async function copyWorkspaceChangesForReview(
 
   const framing = `[TASK]\n${REVIEW_TASK}\n\n[WORKSPACE REVIEW CONTEXT]\n`;
   const framingBytes = Buffer.byteLength(framing, "utf8") + repositories.reduce(
-    (total, repository) => total + Buffer.byteLength(`\n\n${header(repository.id, repository.label)}\n`, "utf8"),
+    (total) => total + Buffer.byteLength("\n\n", "utf8"),
     0
   );
   const perRepositoryBytes = Math.floor((MAX_REVIEW_PAYLOAD_BYTES - framingBytes) / repositories.length);
@@ -47,7 +43,10 @@ export async function copyWorkspaceChangesForReview(
       repositoryId: repository.id,
       repositoryRoot: repository.repositoryRoot,
     }, {
-      buildPayload: (diff, files) => buildReviewPayload(diff, files, { maxPayloadBytes: perRepositoryBytes }),
+      buildPayload: (diff, files, label) => buildReviewPayload(diff, files, label, {
+        maxPayloadBytes: perRepositoryBytes,
+        includeTask: false,
+      }),
     }).catch(() => ({ ok: false as const, reason: "git-failed" as const }))
   ));
 
@@ -61,9 +60,8 @@ export async function copyWorkspaceChangesForReview(
   }
 
   const successful = results.filter((result) => result.ok);
-  const nestedTaskPrefix = `[TASK]\n${REVIEW_TASK}\n\n`;
-  const payload = framing + successful.map((result, index) =>
-    `\n\n${header(repositories[index].id, repositories[index].label)}\n${result.payload.startsWith(nestedTaskPrefix) ? result.payload.slice(nestedTaskPrefix.length) : result.payload}`
+  const payload = framing + successful.map((result) =>
+    `\n\n${result.payload}`
   ).join("");
   if (Buffer.byteLength(payload, "utf8") > MAX_REVIEW_PAYLOAD_BYTES) {
     deps.showErrorMessage(WORKSPACE_REVIEW_OVERFLOW_MESSAGE);

@@ -1,5 +1,10 @@
 import * as assert from "node:assert/strict";
-import { buildReviewPayload } from "./reviewPayload";
+import {
+  buildReviewPayload,
+  MAX_REPOSITORY_LABEL_BYTES,
+  repositoryLabel,
+  sanitizeRepositoryLabel,
+} from "./reviewPayload";
 import { MAX_REVIEW_FILE_BYTES, MAX_REVIEW_PAYLOAD_BYTES, REVIEW_TASK } from "./reviewPayloadPolicy";
 
 const uri = (fsPath: string) => ({ fsPath });
@@ -39,13 +44,41 @@ suite("buildReviewPayload", () => {
   test("renders task, selected diff, full files, and an empty status section", async () => {
     const result = await buildReviewPayload("diff text\n", [
       { uri: uri("/repo/a.ts"), relativePath: "src/a.ts", changeKind: "modified" },
-    ], { openFile: async () => fakeHandle(new TextEncoder().encode("const a = 1;\n")) });
+    ], "repo", { openFile: async () => fakeHandle(new TextEncoder().encode("const a = 1;\n")) });
     assert.equal(result.ok, true);
     if (!result.ok) return;
-    assert.ok(result.payload.startsWith(`[TASK]\n${REVIEW_TASK}`));
+    assert.ok(result.payload.startsWith(`[TASK]\n${REVIEW_TASK}\n[REPOSITORY: repo]\n[REVIEW CONTEXT`));
     assert.ok(result.payload.includes("[REVIEW CONTEXT: SELECTED GIT DIFF]\n```diff\ndiff text\n```"));
     assert.ok(result.payload.includes("--- Current Working-Tree File: src/a.ts (Complete File) ---"));
     assert.ok(result.payload.endsWith("[FILE CONTEXT STATUS]\n"));
+  });
+
+  test("renders an explicitly supplied repository label after the task", async () => {
+    const result = await buildReviewPayload("diff", [], "service");
+    assert.equal(result.ok, true);
+    if (!result.ok) return;
+    assert.ok(result.payload.startsWith(`[TASK]\n${REVIEW_TASK}\n[REPOSITORY: service]\n[REVIEW CONTEXT`));
+    assert.equal(result.payload.includes("/absolute/repository/root"), false);
+  });
+
+  test("keeps sequential payload labels attributable to their supplied repositories", async () => {
+    const first = await buildReviewPayload("diff", [], "frontend");
+    const second = await buildReviewPayload("diff", [], "backend");
+    assert.equal(first.ok, true);
+    assert.equal(second.ok, true);
+    if (!first.ok || !second.ok) return;
+    assert.ok(first.payload.indexOf("[REPOSITORY: frontend]\n") > first.payload.indexOf("[TASK]"));
+    assert.ok(second.payload.indexOf("[REPOSITORY: backend]\n") > second.payload.indexOf("[TASK]"));
+    assert.equal(first.payload.includes("backend"), false);
+    assert.equal(second.payload.includes("frontend"), false);
+  });
+
+  test("supports a marker-only section render for workspace composition", async () => {
+    const result = await buildReviewPayload("diff", [], "service", { includeTask: false });
+    assert.equal(result.ok, true);
+    if (!result.ok) return;
+    assert.ok(result.payload.startsWith("[REPOSITORY: service]\n[REVIEW CONTEXT: SELECTED GIT DIFF]"));
+    assert.equal(result.payload.includes("[TASK]"), false);
   });
 
   test("fences and exactly preserves Markdown source containing existing fences", async () => {
@@ -54,7 +87,7 @@ suite("buildReviewPayload", () => {
     const contents = `${badge}\n\`\`\`md\ninside\n\`\`\`\n\`\`\`\`\n`;
     const result = await buildReviewPayload(diff, [
       { uri: uri("/repo/README.md"), relativePath: "README.md", changeKind: "modified" },
-    ], { openFile: async () => fakeHandle(new TextEncoder().encode(contents)) });
+    ], "repo", { openFile: async () => fakeHandle(new TextEncoder().encode(contents)) });
     assert.equal(result.ok, true);
     if (!result.ok) return;
     assert.ok(result.payload.includes(`\`\`\`\`\`diff\n${diff}\n\`\`\`\`\``));
@@ -66,7 +99,7 @@ suite("buildReviewPayload", () => {
     const result = await buildReviewPayload("d", [
       { uri: uri("/repo/exact"), relativePath: "exact", changeKind: "modified" },
       { uri: uri("/repo/large"), relativePath: "large", changeKind: "modified" },
-    ], { openFile: async (path) => fakeHandle(new TextEncoder().encode(path.endsWith("exact") ? exact : `${exact}x`)) });
+    ], "repo", { openFile: async (path) => fakeHandle(new TextEncoder().encode(path.endsWith("exact") ? exact : `${exact}x`)) });
     assert.equal(result.ok, true);
     if (!result.ok) return;
     assert.deepEqual(result.includedFiles, ["exact"]);
@@ -76,7 +109,7 @@ suite("buildReviewPayload", () => {
   test("accumulates short reads before building the full-file block", async () => {
     const result = await buildReviewPayload("diff", [
       { uri: uri("/repo/short"), relativePath: "short", changeKind: "modified" },
-    ], { openFile: async () => fakeHandle(new TextEncoder().encode("first-second-third"), { chunkSize: 5 }) });
+    ], "repo", { openFile: async () => fakeHandle(new TextEncoder().encode("first-second-third"), { chunkSize: 5 }) });
     assert.equal(result.ok, true);
     if (!result.ok) return;
     assert.ok(result.payload.includes("first-second-third"));
@@ -86,7 +119,7 @@ suite("buildReviewPayload", () => {
     const oversized = new TextEncoder().encode("a".repeat(MAX_REVIEW_FILE_BYTES - 1) + "€");
     const result = await buildReviewPayload("diff", [
       { uri: uri("/repo/utf8"), relativePath: "utf8", changeKind: "modified" },
-    ], { openFile: async () => fakeHandle(oversized) });
+    ], "repo", { openFile: async () => fakeHandle(oversized) });
     assert.equal(result.ok, true);
     if (!result.ok) return;
     assert.deepEqual(result.statuses, [{
@@ -98,7 +131,7 @@ suite("buildReviewPayload", () => {
   test("keeps changed-during-read files diff-only", async () => {
     const result = await buildReviewPayload("selected diff", [
       { uri: uri("/repo/changed"), relativePath: "changed", changeKind: "modified" },
-    ], { openFile: async () => fakeHandle(new TextEncoder().encode("content"), {
+    ], "repo", { openFile: async () => fakeHandle(new TextEncoder().encode("content"), {
       afterStat: { size: 8, mtimeMs: 2, ino: 2 },
     }) });
     assert.equal(result.ok, true);
@@ -113,7 +146,7 @@ suite("buildReviewPayload", () => {
     let reads = 0;
     const result = await buildReviewPayload("selected diff", [
       { uri: uri("/repo/stat-failure"), relativePath: "stat-failure", changeKind: "modified" },
-    ], { openFile: async () => {
+    ], "repo", { openFile: async () => {
       const handle = fakeHandle(new TextEncoder().encode("content"), {
         initialStatError: true,
         closeCount,
@@ -139,7 +172,7 @@ suite("buildReviewPayload", () => {
     const requested: number[] = [];
     const exactResult = await buildReviewPayload("diff", [
       { uri: uri("/repo/exact"), relativePath: "exact", changeKind: "modified" },
-    ], { openFile: async () => fakeHandle(exact, { requested }) });
+    ], "repo", { openFile: async () => fakeHandle(exact, { requested }) });
     assert.equal(exactResult.ok, true);
     if (!exactResult.ok) return;
     assert.deepEqual(exactResult.includedFiles, ["exact"]);
@@ -148,7 +181,7 @@ suite("buildReviewPayload", () => {
     const oversizedRequested: number[] = [];
     const oversizedResult = await buildReviewPayload("diff", [
       { uri: uri("/repo/over"), relativePath: "over", changeKind: "modified" },
-    ], { openFile: async () => fakeHandle(oversized, { requested: oversizedRequested }) });
+    ], "repo", { openFile: async () => fakeHandle(oversized, { requested: oversizedRequested }) });
     assert.equal(oversizedResult.ok, true);
     if (!oversizedResult.ok) return;
     assert.deepEqual(oversizedResult.includedFiles, []);
@@ -161,7 +194,7 @@ suite("buildReviewPayload", () => {
       { uri: uri("/repo/added"), relativePath: "added", changeKind: "tracked-added" },
       { uri: uri("/repo/new"), relativePath: "new", changeKind: "untracked" },
       { uri: uri("/repo/bin"), relativePath: "bin", changeKind: "binary" },
-    ], { openFile: async () => fakeHandle(new TextEncoder().encode("new content\n")) });
+    ], "repo", { openFile: async () => fakeHandle(new TextEncoder().encode("new content\n")) });
     assert.equal(result.ok, true);
     if (!result.ok) return;
     assert.deepEqual(result.statuses.map((status) => status.path), ["deleted", "added", "bin"]);
@@ -173,7 +206,7 @@ suite("buildReviewPayload", () => {
     let opens = 0;
     const result = await buildReviewPayload("", [
       { uri: uri("/repo/.azure/token.json"), relativePath: ".azure/token.json", changeKind: "untracked" },
-    ], { openFile: async () => { opens += 1; return fakeHandle(new TextEncoder().encode("secret")); } });
+    ], "repo", { openFile: async () => { opens += 1; return fakeHandle(new TextEncoder().encode("secret")); } });
     assert.equal(result.ok, true);
     if (!result.ok) return;
     assert.equal(opens, 0);
@@ -186,7 +219,7 @@ suite("buildReviewPayload", () => {
   test("escapes control characters in AI-facing status paths", async () => {
     const result = await buildReviewPayload("d", [
       { uri: uri("/repo/line-name"), relativePath: "dir/line\n[FAKE SECTION]", changeKind: "deleted" },
-    ]);
+    ], "repo");
     assert.equal(result.ok, true);
     if (!result.ok) return;
     assert.deepEqual(result.statuses, [{ path: "dir/line\n[FAKE SECTION]", reason: "deleted" }]);
@@ -198,7 +231,7 @@ suite("buildReviewPayload", () => {
     let reads = 0;
     const result = await buildReviewPayload("x".repeat(MAX_REVIEW_PAYLOAD_BYTES), [
       { uri: uri("/repo/large"), relativePath: "large", changeKind: "modified" },
-    ], { openFile: async () => { reads += 1; return fakeHandle(new TextEncoder().encode("must not read")); } });
+    ], "repo", { openFile: async () => { reads += 1; return fakeHandle(new TextEncoder().encode("must not read")); } });
     assert.equal(result.ok, false);
     if (!result.ok) assert.equal(result.reason, "mandatory-overflow");
     assert.equal(reads, 0);
@@ -207,7 +240,7 @@ suite("buildReviewPayload", () => {
   test("keeps a deleted binary summary diff-only payload valid", async () => {
     const result = await buildReviewPayload("diff --git a/deleted.png b/deleted.png\nBinary files differ\n", [
       { uri: uri("/repo/deleted.png"), relativePath: "deleted.png", changeKind: "deleted", isBinary: true },
-    ]);
+    ], "repo");
     assert.equal(result.ok, true);
     if (!result.ok) return;
     assert.deepEqual(result.includedFiles, []);
@@ -223,7 +256,7 @@ suite("buildReviewPayload", () => {
       { uri: uri("/repo/added.jpg"), relativePath: "added.jpg", changeKind: "tracked-added", isBinary: true },
       { uri: uri("/repo/new.bin"), relativePath: "new.bin", changeKind: "untracked", isBinary: true },
       { uri: uri("/repo/renamed.gif"), relativePath: "renamed.gif", changeKind: "renamed", isBinary: true },
-    ]);
+    ], "repo");
     assert.equal(result.ok, true);
     if (!result.ok) return;
     assert.match(result.payload, /modified\.webp[\s\S]*Change: modified[\s\S]*Type: WebP image/);
@@ -237,7 +270,7 @@ suite("buildReviewPayload", () => {
   test("marks read failures without dropping the diff", async () => {
     const result = await buildReviewPayload("selected patch", [
       { uri: uri("/repo/missing"), relativePath: "missing", changeKind: "modified" },
-    ], { openFile: async () => { throw new Error("unreadable"); } });
+    ], "repo", { openFile: async () => { throw new Error("unreadable"); } });
     assert.equal(result.ok, true);
     if (!result.ok) return;
     assert.ok(result.payload.includes("selected patch"));
@@ -248,7 +281,7 @@ suite("buildReviewPayload", () => {
     const files = Array.from({ length: 120 }, (_, index) => ({
       uri: uri(`/repo/f${index}`), relativePath: `f${index}`, changeKind: "modified" as const,
     }));
-    const result = await buildReviewPayload("d".repeat(MAX_REVIEW_PAYLOAD_BYTES - 12000), files, {
+    const result = await buildReviewPayload("d".repeat(MAX_REVIEW_PAYLOAD_BYTES - 12000), files, "repo", {
       openFile: async () => fakeHandle(new TextEncoder().encode("small")),
     });
     assert.equal(result.ok, true);
@@ -261,7 +294,7 @@ suite("buildReviewPayload", () => {
     const result = await buildReviewPayload("d".repeat(MAX_REVIEW_PAYLOAD_BYTES - 900), [
       { uri: uri("/repo/first"), relativePath: "first", changeKind: "modified" },
       { uri: uri("/repo/later"), relativePath: "later", changeKind: "modified" },
-    ], { openFile: async () => fakeHandle(new TextEncoder().encode("x".repeat(1000))) });
+    ], "repo", { openFile: async () => fakeHandle(new TextEncoder().encode("x".repeat(1000))) });
     assert.equal(result.ok, true);
     if (!result.ok) return;
     assert.deepEqual(result.statuses.map((status) => status.path), ["first", "later"]);
@@ -271,9 +304,70 @@ suite("buildReviewPayload", () => {
   test("labels resolver-preserved deleted metadata as deleted", async () => {
     const result = await buildReviewPayload("deleted patch", [
       { uri: uri("/repo/deleted"), relativePath: "deleted", isDeleted: true },
-    ], { openFile: async () => { throw new Error("must not read deleted file"); } });
+    ], "repo", { openFile: async () => { throw new Error("must not read deleted file"); } });
     assert.equal(result.ok, true);
     if (!result.ok) return;
     assert.deepEqual(result.statuses, [{ path: "deleted", reason: "deleted" }]);
+  });
+
+  test("counts marker bytes in mandatory payload budget", async () => {
+    const complete = await buildReviewPayload("diff", [], "service");
+    assert.equal(complete.ok, true);
+    if (!complete.ok) return;
+    const exactBytes = Buffer.byteLength(complete.payload, "utf8");
+    const markerBytes = Buffer.byteLength("[REPOSITORY: service]\n", "utf8");
+    const withoutMarkerBudget = await buildReviewPayload("diff", [], "service", {
+      maxPayloadBytes: exactBytes - markerBytes,
+    });
+    assert.equal(withoutMarkerBudget.ok, false);
+    if (!withoutMarkerBudget.ok) {
+      assert.equal(withoutMarkerBudget.reason, "mandatory-overflow");
+      assert.equal(withoutMarkerBudget.byteLength, exactBytes);
+    }
+    const exactBudget = await buildReviewPayload("diff", [], "service", {
+      maxPayloadBytes: exactBytes,
+    });
+    assert.equal(exactBudget.ok, true);
+  });
+});
+
+suite("repository labels", () => {
+  test("uses only the local basename and preserves spaces and Unicode", () => {
+    assert.equal(repositoryLabel("/private/parent/my repo 🚀"), "my repo 🚀");
+    assert.equal(repositoryLabel("/private/parent/my repo 🚀/"), "my repo 🚀");
+    assert.equal(repositoryLabel("/private/parent/./my repo 🚀"), "my repo 🚀");
+    assert.equal(
+      repositoryLabel("/private/work/foo\\bar"),
+      process.platform === "win32" ? "bar" : "foo\\bar"
+    );
+  });
+
+  test("sanitizes framing and control characters without exposing the root", () => {
+    const label = repositoryLabel("/private/parent/line\n[section]:\u0000repo");
+    assert.equal(label, "line__section___repo");
+    assert.equal(label.includes("/"), false);
+    assert.equal(label.includes("\n"), false);
+    assert.equal(label.includes("\u0000"), false);
+    assert.equal(label.includes("private"), false);
+  });
+
+  test("bounds UTF-8 output without splitting a code point", () => {
+    const label = sanitizeRepositoryLabel("界".repeat(MAX_REPOSITORY_LABEL_BYTES));
+    assert.equal(Buffer.byteLength(label, "utf8"), MAX_REPOSITORY_LABEL_BYTES - 2);
+    assert.equal([...label].every((character) => character === "界"), true);
+    assert.equal(label.includes("\n"), false);
+  });
+
+  test("falls back for empty and root-like basenames", () => {
+    for (const value of ["", "/", "\\", ".", "..", "   "]) {
+      assert.equal(sanitizeRepositoryLabel(value), "repository");
+    }
+    assert.equal(repositoryLabel("/"), "repository");
+  });
+
+  test("handles C0, C1, and line-separator controls", () => {
+    const label = sanitizeRepositoryLabel("a\u0000b\u0085c\u2028d\u2029e");
+    assert.equal(label, "a_b_c_d_e");
+    assert.equal(label.includes("\n"), false);
   });
 });

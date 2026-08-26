@@ -106,6 +106,24 @@ suite("normalizeScmCommandArgs", () => {
 });
 
 suite("reviewSelectedChanges", () => {
+  test("passes only the resolved repository basename to the payload formatter", async () => {
+    let suppliedLabel = "";
+    const harness = deps({
+      selection: {
+        stat: async () => ({ isFile: true }),
+        getRepositoryRoot: async () => "/private/parent/review repo",
+        getRelativePath: () => "a.ts",
+      },
+      buildPayload: async (_diff, _files, label) => {
+        suppliedLabel = label;
+        return { ok: true, payload: "payload", includedFiles: [], statuses: [] };
+      },
+    });
+    await reviewSelectedChanges([resource("/repo/a.ts")], harness.base);
+    assert.equal(suppliedLabel, "review repo");
+    assert.equal(harness.copied[0], "payload");
+  });
+
   test("copies the selected payload and uses singular success wording with size", async () => {
     const harness = deps();
     await reviewSelectedChanges([resource("/repo/a.ts")], harness.base);

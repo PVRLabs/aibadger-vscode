@@ -10,7 +10,7 @@ function harness(overrides: Partial<BadgerReviewClient> = {}) {
   const client: BadgerReviewClient = {
     async reviewContext(request) {
       calls.push(`context:${request.repositoryRoot}:${request.guidance}:${request.includeTopology}`);
-      return { ok: true, prompt: "  [TASK]\nreview\n" };
+      return { ok: true, prompt: "[TASK]\nreview\n[REPOSITORY: repo]\n" };
     },
     async reviewContinuation() {
       calls.push("continuation");
@@ -48,11 +48,12 @@ suite("prepareDeepReviewPrompt", () => {
 
     assert.deepEqual(result, { ok: true });
     assert.deepEqual(h.calls, ["context:/repo:focus on races:true"]);
-    assert.deepEqual(h.clipboard, ["  [TASK]\nreview\n"]);
+    assert.deepEqual(h.clipboard, ["[TASK]\nreview\n[REPOSITORY: repo]\n"]);
+    assert.equal((h.clipboard[0].match(/\[REPOSITORY: repo\]/g) ?? []).length, 1);
     assert.deepEqual(h.opened, []);
     assert.equal(
       h.messages[0],
-      "AI Badger review prompt copied to clipboard (16 B)."
+      "AI Badger review prompt copied to clipboard (33 B)."
     );
   });
 
@@ -76,10 +77,10 @@ suite("prepareDeepReviewPrompt", () => {
     );
 
     assert.deepEqual(result, { ok: true });
-    assert.equal(order[0], "copy:  [TASK]\nreview\n");
+    assert.equal(order[0], "copy:[TASK]\nreview\n[REPOSITORY: repo]\n");
     assert.equal(order[1], "open:https://chatgpt.com");
     assert.ok(!h.opened[0].includes("[TASK]"));
-    assert.deepEqual(h.messages, ["Prompt copied (16 B). ChatGPT opened."]);
+    assert.deepEqual(h.messages, ["Prompt copied (33 B). ChatGPT opened."]);
   });
 
   test("reports payload size when copying succeeds but opening fails", async () => {
@@ -96,9 +97,9 @@ suite("prepareDeepReviewPrompt", () => {
     );
 
     assert.deepEqual(result, { ok: true });
-    assert.deepEqual(h.clipboard, ["  [TASK]\nreview\n"]);
+    assert.deepEqual(h.clipboard, ["[TASK]\nreview\n[REPOSITORY: repo]\n"]);
     assert.deepEqual(h.messages, [
-      "Prompt copied (16 B). Could not open Claude.",
+      "Prompt copied (33 B). Could not open Claude.",
     ]);
   });
 

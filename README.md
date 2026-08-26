@@ -1,6 +1,6 @@
 # AI Badger for VS Code
 
-![AI Badger for VS Code ask workflow](https://raw.githubusercontent.com/PVRLabs/aibadger-vscode/main/media/ai-badger-vscode-step1.png)
+![AI Badger for VS Code Deep Review workflow](https://raw.githubusercontent.com/PVRLabs/aibadger-vscode/main/media/ai-badger-vscode-deep-review.jpg)
 
 Bring focused repository context into ChatGPT, Claude, Grok, or another AI chat, directly from VS Code.
 
@@ -13,8 +13,6 @@ Direct repository and workspace review work locally without the Badger CLI. **De
 [▶ Try the AI Badger VS Code Demo](https://pvrlabs.xyz/aibadger/vscode-demo.html)
 
 [Read: Reviewing AI-Generated Code in VS Code with AI Badger](https://pvrlabs.xyz/articles/reviewing-ai-generated-code-vscode-aibadger.html)
-
-<!-- TODO: Replace this generic Ask workflow image with a VS Code-specific review screenshot or GIF when one is available. -->
 
 ## Why AI Badger?
 

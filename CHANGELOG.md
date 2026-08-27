@@ -4,6 +4,11 @@ All notable changes to the AI Badger VS Code extension are documented here.
 
 ## [Unreleased]
 
+## [0.1.2] - 2026-08-27
+
+- Added documented Quick Review and Deep Review workflow walkthroughs with
+  updated review-first product guidance.
+
 ## [0.1.1] - 2026-08-26
 
 - Added basename-derived `[REPOSITORY: <label>]` markers to direct and

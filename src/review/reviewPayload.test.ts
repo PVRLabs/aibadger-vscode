@@ -41,6 +41,18 @@ function fakeHandle(
 }
 
 suite("buildReviewPayload", () => {
+  test("uses the softened review contract", () => {
+    for (const expected of [
+      "concrete bugs, edge cases, regressions, maintainability problems, and unintended behavior changes",
+      "Report concise findings, or clearly state that no issues were found.",
+      "Include a brief, directional recommendation for addressing each finding when useful.",
+      "Do not provide detailed patches or implementation code unless explicitly requested.",
+    ]) {
+      assert.ok(REVIEW_TASK.includes(expected), `review task missing ${JSON.stringify(expected)}`);
+    }
+    assert.equal(REVIEW_TASK.includes("Do not invent patches unless explicitly requested."), false);
+  });
+
   test("renders task, selected diff, full files, and an empty status section", async () => {
     const result = await buildReviewPayload("diff text\n", [
       { uri: uri("/repo/a.ts"), relativePath: "src/a.ts", changeKind: "modified" },

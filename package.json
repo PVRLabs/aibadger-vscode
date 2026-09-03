@@ -2,7 +2,7 @@
   "name": "ai-badger",
   "displayName": "AI Badger",
   "description": "Review Git changes or copy focused code context into any AI chat, with optional repository-aware workflows powered by the local Badger CLI.",
-  "version": "0.1.2",
+  "version": "0.1.3",
   "publisher": "pvrlabs",
   "license": "MIT",
   "icon": "media/ai-badger-icon.png",

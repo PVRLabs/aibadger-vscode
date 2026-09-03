@@ -4,6 +4,12 @@ All notable changes to the AI Badger VS Code extension are documented here.
 
 ## [Unreleased]
 
+## [0.1.3] - 2026-09-03
+
+- Updated direct review prompts to request a brief, directional recommendation
+  for each finding while still requiring a clear no-issues statement and
+  forbidding detailed patches unless asked.
+
 ## [0.1.2] - 2026-08-27
 
 - Added documented Quick Review and Deep Review workflow walkthroughs with

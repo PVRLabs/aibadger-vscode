@@ -2,6 +2,7 @@ import { buildRepositoryReviewPayload } from "./repositoryReviewChanges";
 import { buildReviewPayload } from "../review/reviewPayload";
 import { MAX_REVIEW_PAYLOAD_BYTES, REVIEW_TASK } from "../review/reviewPayloadPolicy";
 import { workspaceRepositories } from "../review/workspaceReviewContract";
+import { formatPayloadSize } from "../shared/formatPayloadSize";
 
 export const WORKSPACE_REVIEW_NO_CHANGE_MESSAGE = "No workspace changes to copy for review.";
 export const WORKSPACE_REVIEW_FAILED_MESSAGE = "Could not prepare all workspace changes for review.";
@@ -76,6 +77,6 @@ export async function copyWorkspaceChangesForReview(
   }
   const changedFiles = successful.reduce((total, result) => total + result.changedFiles.length, 0);
   deps.showInformationMessage(
-    `Copied workspace review request for ${repositories.length} ${repositories.length === 1 ? "repository" : "repositories"} and ${changedFiles} changed ${changedFiles === 1 ? "file" : "files"}. Nothing is shared until you paste it.`
+    `Copied workspace review request for ${repositories.length} ${repositories.length === 1 ? "repository" : "repositories"} and ${changedFiles} changed ${changedFiles === 1 ? "file" : "files"} (${formatPayloadSize(Buffer.byteLength(payload, "utf8"))}). Nothing is shared until you paste it.`
   );
 }

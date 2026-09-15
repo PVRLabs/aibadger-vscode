@@ -7,6 +7,7 @@ import {
   WORKSPACE_REVIEW_OVERFLOW_MESSAGE,
 } from "./workspaceReviewChanges";
 import { repositoryLabel } from "../review/reviewPayload";
+import { formatPayloadSize } from "../shared/formatPayloadSize";
 
 suite("copyWorkspaceChangesForReview", () => {
   test("keeps one outer task and scopes each repository section under its marker", async () => {
@@ -56,7 +57,10 @@ suite("copyWorkspaceChangesForReview", () => {
     assert.equal(copied.length, 1);
     assert.match(copied[0], /\[REPOSITORY: web\]/);
     assert.match(copied[0], /\[REPOSITORY: api\]/);
-    assert.match(info[0], /2 repositories and 2 changed files/);
+    assert.equal(
+      info[0],
+      `Copied workspace review request for 2 repositories and 2 changed files (${formatPayloadSize(Buffer.byteLength(copied[0], "utf8"))}). Nothing is shared until you paste it.`
+    );
   });
 
   test("keeps duplicate repository names and colliding relative paths distinct", async () => {

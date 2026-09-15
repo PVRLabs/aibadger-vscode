@@ -29,8 +29,34 @@ RELEASE_VERSION=vX.Y.Z
 1. Commit the version and changelog changes.
 2. Create and push the matching tag with `git tag "${RELEASE_VERSION}"` and `git push origin "${RELEASE_VERSION}"`.
 3. Publish the GitHub Release for that tag with the changelog notes and inspected `.vsix` attached.
-4. Separately decide whether to publish the same version to the Visual Studio Marketplace. Marketplace publication is manual and requires the authorized `pvrlabs` publisher credentials; CI does not publish it.
+4. Separately decide whether to publish the same version to the Visual Studio Marketplace. When approved, run the local publishing script from the tagged release checkout:
+
+   ```bash
+   npm ci
+   npm run publish:marketplace
+   ```
+
+   The script requires a clean checkout at the exact `vX.Y.Z` tag, downloads
+   `ai-badger-X.Y.Z.vsix` from that tag's published GitHub Release, checks its
+   embedded publisher and version plus required and excluded files, runs
+   `npm run verify`, and asks for confirmation before publishing that same
+   VSIX. It needs an authenticated `gh` CLI and authorized Marketplace
+   credentials. Use `--azure-credential` for Microsoft Entra authentication
+   when configured:
+
+   ```bash
+   npm run publish:marketplace -- --azure-credential
+   ```
+
+   Otherwise `vsce` uses `VSCE_PAT` or credentials saved with `vsce login`.
+   Microsoft plans to retire global Azure DevOps PATs on December 1, 2026, so
+   prefer Microsoft Entra authentication for new setups ([VS Code publishing
+   guidance](https://code.visualstudio.com/api/working-with-extensions/publishing-extension#secure-automated-publishing-to-visual-studio-marketplace)).
+   Do not commit credentials. The script does not publish from CI; adding
+   automatic CI publication requires a separate release-process decision.
 5. After publication, verify the GitHub Release, VSIX asset, Marketplace listing, version, links, icon, install instructions, and activation from a clean environment.
 6. Prepare the next development version on `main`, following the main AI Badger repository's versioning practice.
 
-Do not commit publishing credentials or add automated Marketplace publishing without a separate release-process decision.
+Do not commit publishing credentials. The local Marketplace script is an
+explicit maintainer action; add automatic CI publication only after a separate
+release-process decision.

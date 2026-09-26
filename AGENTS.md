@@ -3,8 +3,8 @@
 This repository implements the AI Badger VS Code extension. Read `README.md`
 and `package.json` only when current product behavior or scripts are needed.
 
-Use `repo-map` to locate related repositories when work requires CLI or private
-specification context.
+Use RepoLink (`repolink`) to locate related repositories when work requires
+CLI or private specification context.
 
 Keep extension behavior and webview contracts synchronized. Add focused tests
 for changed behavior and avoid unrelated package, build, or dependency edits.

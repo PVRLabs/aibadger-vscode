@@ -21,3 +21,9 @@ it launches the integration-test host. Use direct npm for packaging a VSIX.
 
 Keep generated `out/` and other build artifacts out of commits unless tracked
 by the repository.
+
+## Archived private plans
+
+Move full private historical plans to Projctl under
+`archive/<project-id>/plans/`. Keep a short description and pointer in the
+source archive folder.

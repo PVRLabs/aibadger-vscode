@@ -24,8 +24,8 @@ import {
   EXECUTABLE_UNAVAILABLE_WARNING,
   PROMPT1_SUMMARY_NOTE,
   PROMPT1_SUMMARY_TITLE,
-  PROMPT2_COPIED_MESSAGE,
-  PROMPT_COPIED_MESSAGE,
+  requestedCodeCopiedMessage,
+  askPromptCopiedMessage,
   REQUEST_INPUT_PROMPT,
   RESOLVE_BADGER_LABEL,
   START_AGAIN_LABEL,
@@ -165,7 +165,7 @@ function createHarness(options: {
       goal,
       behavior.aiResponse
     );
-    if (copyError) {
+    if (typeof copyError === "string" || copyError?.error) {
       errors.push(
         typeof copyError === "string" ? copyError : copyError.error ?? "copy failed"
       );
@@ -279,7 +279,7 @@ suite("runAsk shared request flow (unified wizard)", () => {
       h.clipboard[0],
       formatMockPrompt(h.clientCalls[0])
     );
-    assert.deepStrictEqual(h.infos, [PROMPT_COPIED_MESSAGE]);
+    assert.deepStrictEqual(h.infos, [askPromptCopiedMessage(Buffer.byteLength(h.clipboard[0], "utf8"))]);
     assert.deepStrictEqual(h.extractCalls, []);
   });
 
@@ -535,8 +535,8 @@ suite("runAsk step 2 copy-requested-files + done panel", () => {
     assert.strictEqual(COPY_REQUESTED_FILES_LABEL, "Copy requested files");
     assert.strictEqual(START_AGAIN_LABEL, "Start again");
     assert.strictEqual(
-      PROMPT2_COPIED_MESSAGE,
-      "✓ Requested code copied. Paste it into the same AI chat to continue."
+      requestedCodeCopiedMessage(7),
+      "✓ Requested code copied (7 B). Paste it into the same AI chat to continue."
     );
   });
 
@@ -595,8 +595,8 @@ suite("runAsk step 2 copy-requested-files + done panel", () => {
       formatMockExtractPrompt(h.extractCalls[0])
     );
     assert.deepStrictEqual(h.infos, [
-      PROMPT_COPIED_MESSAGE,
-      PROMPT2_COPIED_MESSAGE,
+      askPromptCopiedMessage(Buffer.byteLength(h.clipboard[0], "utf8")),
+      requestedCodeCopiedMessage(Buffer.byteLength(h.clipboard[1], "utf8")),
     ]);
   });
 
@@ -708,7 +708,7 @@ suite("runAsk Step 1 copy / copy-and-open", () => {
 
     assert.strictEqual(h.clipboard.length, 1);
     assert.deepStrictEqual(h.openedUrls, []);
-    assert.deepStrictEqual(h.infos, [PROMPT_COPIED_MESSAGE]);
+    assert.deepStrictEqual(h.infos, [askPromptCopiedMessage(Buffer.byteLength(h.clipboard[0], "utf8"))]);
   });
 
   test("copy and open uses landing url only and remembers provider", async () => {
@@ -725,7 +725,7 @@ suite("runAsk Step 1 copy / copy-and-open", () => {
     assert.deepStrictEqual(h.openedUrls, [chatgpt.url]);
     assert.ok(!h.openedUrls[0].includes(h.clipboard[0]));
     assert.strictEqual(h.lastProviderId, "chatgpt");
-    assert.deepStrictEqual(h.infos, [promptCopiedOpenedMessage("ChatGPT")]);
+    assert.deepStrictEqual(h.infos, [promptCopiedOpenedMessage("ChatGPT", Buffer.byteLength(h.clipboard[0], "utf8"))]);
     assert.deepStrictEqual(h.extractCalls, []);
   });
 
@@ -743,7 +743,7 @@ suite("runAsk Step 1 copy / copy-and-open", () => {
     assert.strictEqual(h.openedUrls.length, 1);
     assert.strictEqual(h.lastProviderId, undefined);
     assert.deepStrictEqual(h.infos, [
-      promptCopiedOpenFailedMessage("Claude"),
+      promptCopiedOpenFailedMessage("Claude", Buffer.byteLength(h.clipboard[0], "utf8")),
     ]);
   });
 
@@ -768,7 +768,7 @@ suite("runAsk Step 1 copy / copy-and-open", () => {
     await runAsk({ kind: "project" }, h.deps);
     assert.deepStrictEqual(h.openedUrls, []);
     assert.ok(
-      h.infos.includes(PROMPT2_COPIED_MESSAGE),
+      h.infos.includes(requestedCodeCopiedMessage(Buffer.byteLength(h.clipboard[1], "utf8"))),
       "done messaging stays continue-same-chat"
     );
   });

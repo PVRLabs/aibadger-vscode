@@ -1,3 +1,4 @@
+import { formatPayloadSize } from "../shared/formatPayloadSize";
 import type {
   BadgerReviewClient,
   GeneratePromptResult,
@@ -68,6 +69,7 @@ export async function prepareDeepReviewPrompt(
     deps.showInformationMessage(promptCopiedMessage(payloadBytes));
     return {
       ok: true,
+    payloadSize: formatPayloadSize(payloadBytes),
       ...(result.badgerVersion ? { badgerVersion: result.badgerVersion } : {}),
     };
   }
@@ -80,6 +82,7 @@ export async function prepareDeepReviewPrompt(
   );
   return {
     ok: true,
+    payloadSize: formatPayloadSize(payloadBytes),
     ...(result.badgerVersion ? { badgerVersion: result.badgerVersion } : {}),
   };
 }
@@ -95,7 +98,7 @@ function noReviewableChanges(message: string): boolean {
 export async function continueDeepReview(
   selectors: string,
   deps: DeepReviewContinuationDeps
-): Promise<string | { badgerVersion?: string } | undefined> {
+): Promise<string | { badgerVersion?: string; payloadSize: string }> {
   const result = await deps.client.reviewContinuation({
     repositoryRoot: deps.repositoryRoot,
     selectors,
@@ -111,10 +114,13 @@ export async function continueDeepReview(
   } catch {
     return "Could not write the supplemental review context to the clipboard.";
   }
+  const payloadBytes = Buffer.byteLength(result.prompt, "utf8");
+  const payloadSize = formatPayloadSize(payloadBytes);
   deps.showInformationMessage(
-    "Additional review context copied. Paste it into the same AI chat."
+    `Additional review context copied (${payloadSize}). Paste it into the same AI chat.`
   );
-  return result.badgerVersion
-    ? { badgerVersion: result.badgerVersion }
-    : undefined;
+  return {
+    payloadSize,
+    ...(result.badgerVersion ? { badgerVersion: result.badgerVersion } : {}),
+  };
 }

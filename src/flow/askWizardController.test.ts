@@ -250,3 +250,16 @@ suite("AskWizardController", () => {
     assert.deepStrictEqual(complete.finished, [{ completedCopy: true }]);
   });
 });
+
+suite("clipboard payload size transport", () => {
+  test("forwards each copy size to its status screen", async () => {
+    const h = createHarness({
+      onPreparePrompt: async () => ({ ok: true, payloadSize: "2 KB" }),
+      onCopyRequestedFiles: async () => ({ payloadSize: "1.2 MB" }),
+    });
+    await h.send({ type: "step1Submit", text: "Explain" });
+    await h.send({ type: "step2Submit", text: "FILE:a.ts" });
+    assert.ok(h.posted.some(m => m.type === "showStep2" && m.payloadSize === "2 KB"));
+    assert.ok(h.posted.some(m => m.type === "showDone" && m.payloadSize === "1.2 MB"));
+  });
+});

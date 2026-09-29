@@ -46,7 +46,7 @@ suite("prepareDeepReviewPrompt", () => {
     const h = harness();
     const result = await prepareDeepReviewPrompt("  focus on races  ", undefined, h.deps);
 
-    assert.deepEqual(result, { ok: true });
+    assert.deepEqual(result, { ok: true, payloadSize: "33 B" });
     assert.deepEqual(h.calls, ["context:/repo:focus on races:true"]);
     assert.deepEqual(h.clipboard, ["[TASK]\nreview\n[REPOSITORY: repo]\n"]);
     assert.equal((h.clipboard[0].match(/\[REPOSITORY: repo\]/g) ?? []).length, 1);
@@ -76,7 +76,7 @@ suite("prepareDeepReviewPrompt", () => {
       h.deps
     );
 
-    assert.deepEqual(result, { ok: true });
+    assert.deepEqual(result, { ok: true, payloadSize: "33 B" });
     assert.equal(order[0], "copy:[TASK]\nreview\n[REPOSITORY: repo]\n");
     assert.equal(order[1], "open:https://chatgpt.com");
     assert.ok(!h.opened[0].includes("[TASK]"));
@@ -96,7 +96,7 @@ suite("prepareDeepReviewPrompt", () => {
       h.deps
     );
 
-    assert.deepEqual(result, { ok: true });
+    assert.deepEqual(result, { ok: true, payloadSize: "33 B" });
     assert.deepEqual(h.clipboard, ["[TASK]\nreview\n[REPOSITORY: repo]\n"]);
     assert.deepEqual(h.messages, [
       "Prompt copied (33 B). Could not open Claude.",
@@ -172,7 +172,8 @@ suite("continueDeepReview", () => {
       h.deps
     );
 
-    assert.equal(error, undefined);
+    assert.deepEqual(error, { payloadSize: "31 B" });
+    assert.deepEqual(h.messages, ["Additional review context copied (31 B). Paste it into the same AI chat."]);
     assert.deepEqual(requests, [{
       root: "/repo",
       selectors: "FILE:README.md\nPREFIX:src/a.ts#run\nNEAR:src/b.ts#call",
@@ -206,5 +207,14 @@ suite("continueDeepReview", () => {
       "Could not write the supplemental review context to the clipboard."
     );
     assert.deepEqual(h.messages, []);
+  });
+});
+
+suite("Deep Review clipboard byte size", () => {
+  test("counts UTF-8 bytes including surrounding whitespace", async () => {
+    const h = harness({ reviewContinuation: async () => ({ ok: true, prompt: " é🐾\n" }) });
+    const result = await continueDeepReview("FILE:a.ts", h.deps);
+    assert.deepEqual(result, { payloadSize: "8 B" });
+    assert.deepEqual(h.messages, ["Additional review context copied (8 B). Paste it into the same AI chat."]);
   });
 });

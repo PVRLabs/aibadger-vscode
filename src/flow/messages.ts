@@ -60,7 +60,9 @@ export function effectiveGoal(goal: string): string {
   return trimmed === "" ? DEFAULT_GOAL : trimmed;
 }
 
-export const PROMPT_COPIED_MESSAGE = "AI Badger prompt copied to clipboard.";
+export function askPromptCopiedMessage(payloadBytes: number): string {
+  return `AI Badger prompt copied to clipboard (${formatPayloadSize(payloadBytes)}).`;
+}
 
 /** Deep Review's equivalent success toast, kept separate from Ask wording. */
 export function promptCopiedMessage(payloadBytes: number): string {
@@ -81,9 +83,9 @@ export function copyAndOpenLabel(providerName: string): string {
 /** Toast after successful copy + system-browser open. */
 export function promptCopiedOpenedMessage(
   providerName: string,
-  payloadBytes?: number
+  payloadBytes: number
 ): string {
-  const size = payloadBytes === undefined ? "" : ` (${formatPayloadSize(payloadBytes)})`;
+  const size = ` (${formatPayloadSize(payloadBytes)})`;
   return `Prompt copied${size}. ${providerName} opened.`;
 }
 
@@ -93,9 +95,9 @@ export function promptCopiedOpenedMessage(
  */
 export function promptCopiedOpenFailedMessage(
   providerName: string,
-  payloadBytes?: number
+  payloadBytes: number
 ): string {
-  const size = payloadBytes === undefined ? "" : ` (${formatPayloadSize(payloadBytes)})`;
+  const size = ` (${formatPayloadSize(payloadBytes)})`;
   return `Prompt copied${size}. Could not open ${providerName}.`;
 }
 
@@ -109,8 +111,9 @@ export const NEXT_PROMPT_COPIED_TITLE = "✓ Requested code copied";
 export const NEXT_PROMPT_COPIED_DESCRIPTION =
   "Paste it into the same AI chat to continue.";
 
-export const PROMPT2_COPIED_MESSAGE =
-  `${NEXT_PROMPT_COPIED_TITLE}. ${NEXT_PROMPT_COPIED_DESCRIPTION}`;
+export function requestedCodeCopiedMessage(payloadBytes: number): string {
+  return `${NEXT_PROMPT_COPIED_TITLE} (${formatPayloadSize(payloadBytes)}). ${NEXT_PROMPT_COPIED_DESCRIPTION}`;
+}
 
 /** Compact guidance shown after Prompt 2 is copied. */
 export const COMPLETION_NEXT_STEPS_TITLE = "Some ways you can continue";

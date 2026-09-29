@@ -329,8 +329,12 @@ function showOnly(which: 1 | 2 | 3): void {
 function showStep2(
   handoffInstruction: string | undefined,
   summaryLines: readonly string[] | undefined,
-  version?: string
+  version?: string,
+  payloadSize?: string
 ): void {
+  handoffHeadline.textContent = payloadSize
+    ? `${config.handoffHeadline.replace(/\.$/, "")} (${payloadSize}).`
+    : config.handoffHeadline;
   setBadgerVersion(version);
   step1Error.textContent = "";
   step2Error.textContent = "";
@@ -355,7 +359,8 @@ function showStep1(goalText: string | undefined): void {
   showOnly(1);
 }
 
-function showDone(): void {
+function showDone(payloadSize?: string): void {
+  doneMessageTitle.textContent = config.doneMessageTitle + (payloadSize ? ` (${payloadSize})` : "");
   step2Error.textContent = "";
   showOnly(3);
 }
@@ -493,13 +498,13 @@ window.addEventListener("message", (event) => {
     setExecutableStatus(!!msg.unavailable, !!msg.busy);
   }
   if (msg.type === "showStep2") {
-    showStep2(msg.handoffInstruction, msg.summaryLines, msg.badgerVersion);
+    showStep2(msg.handoffInstruction, msg.summaryLines, msg.badgerVersion, msg.payloadSize);
   }
   if (msg.type === "showStep1") {
     showStep1(msg.goal || "");
   }
   if (msg.type === "showDone") {
-    showDone();
+    showDone(msg.payloadSize);
   }
   if (msg.type === "badgerVersion") {
     setBadgerVersion(msg.version);

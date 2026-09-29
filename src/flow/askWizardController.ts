@@ -13,13 +13,13 @@ export type PreparePromptAction = {
 };
 
 export type PreparePromptResult =
-  | { ok: true; summaryLines?: readonly string[]; badgerVersion?: string }
+  | { ok: true; summaryLines?: readonly string[]; payloadSize?: string; badgerVersion?: string }
   | { ok: false; message: string };
 
 export type CopyRequestedFilesResult =
   | string
   | undefined
-  | { error?: string; badgerVersion?: string };
+  | { error?: string; badgerVersion?: string; payloadSize?: string };
 
 export type AskWizardControllerOptions = {
   chatProviders: readonly ChatProviderMenuItem[];
@@ -147,6 +147,7 @@ export function createAskWizardController(
             completedCopy = true;
             deps.postMessage({
               type: "showStep2",
+            ...(prepareResult.payloadSize ? { payloadSize: prepareResult.payloadSize } : {}),
               ...(prepareResult.badgerVersion
                 ? { badgerVersion: prepareResult.badgerVersion }
                 : {}),
@@ -163,6 +164,7 @@ export function createAskWizardController(
               : undefined;
           deps.postMessage({
             type: "showStep2",
+            ...(prepareResult.payloadSize ? { payloadSize: prepareResult.payloadSize } : {}),
             ...(openedProviderName
               ? {
                   handoffInstruction:
@@ -235,7 +237,11 @@ export function createAskWizardController(
             });
           }
           completedCopy = true;
-          deps.postMessage({ type: "showDone" });
+          deps.postMessage({
+            type: "showDone",
+            ...(copyResult && typeof copyResult !== "string" && copyResult.payloadSize
+              ? { payloadSize: copyResult.payloadSize } : {}),
+          });
         } catch {
           deps.postMessage({
             type: "validationError",

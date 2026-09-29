@@ -65,12 +65,13 @@ declare namespace AskWizardContract {
       }
     | {
         type: "showStep2";
+        payloadSize?: string;
         handoffInstruction?: string;
         summaryLines?: readonly string[];
         badgerVersion?: string;
       }
     | { type: "showStep1"; goal?: string }
-    | { type: "showDone" }
+    | { type: "showDone"; payloadSize?: string }
     | { type: "badgerVersion"; version: string }
     | { type: "validationError"; message?: string };
 }

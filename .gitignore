@@ -5,3 +5,4 @@ node_modules
 .badger-context
 coverage
 .DS_Store
+.agent-logs/*

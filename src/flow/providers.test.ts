@@ -73,12 +73,12 @@ suite("chat providers (Prompt 1 handoff only)", () => {
     assert.strictEqual(COPY_TO_CLIPBOARD_LABEL, "Copy to Clipboard");
     assert.strictEqual(copyAndOpenLabel("Claude"), "Copy and Open Claude");
     assert.strictEqual(
-      promptCopiedOpenedMessage("ChatGPT"),
-      "Prompt copied. ChatGPT opened."
+      promptCopiedOpenedMessage("ChatGPT", 2048),
+      "Prompt copied (2 KB). ChatGPT opened."
     );
     assert.strictEqual(
-      promptCopiedOpenFailedMessage("Gemini"),
-      "Prompt copied. Could not open Gemini."
+      promptCopiedOpenFailedMessage("Gemini", 33),
+      "Prompt copied (33 B). Could not open Gemini."
     );
   });
 

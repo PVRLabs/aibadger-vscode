@@ -1,3 +1,4 @@
+import { formatPayloadSize } from "../shared/formatPayloadSize";
 import type { BadgerClient, PromptRequest } from "../client/types";
 import {
   messageForResolveError,
@@ -19,8 +20,8 @@ import {
   effectiveGoal,
   HANDOFF_GUIDE_URL,
   MISSING_SELECTION_MESSAGE,
-  PROMPT2_COPIED_MESSAGE,
-  PROMPT_COPIED_MESSAGE,
+  requestedCodeCopiedMessage,
+  askPromptCopiedMessage,
   promptCopiedOpenFailedMessage,
   promptCopiedOpenedMessage,
 } from "./messages";
@@ -167,15 +168,15 @@ export async function runAsk(entry: AskEntry, deps: RunAskDeps): Promise<void> {
           if (opened) {
             deps.ui.setLastChatProviderId(provider.id);
             deps.ui.showInformationMessage(
-              promptCopiedOpenedMessage(provider.name)
+              promptCopiedOpenedMessage(provider.name, Buffer.byteLength(result.prompt, "utf8"))
             );
           } else {
             deps.ui.showInformationMessage(
-              promptCopiedOpenFailedMessage(provider.name)
+              promptCopiedOpenFailedMessage(provider.name, Buffer.byteLength(result.prompt, "utf8"))
             );
           }
         } else {
-          deps.ui.showInformationMessage(PROMPT_COPIED_MESSAGE);
+          deps.ui.showInformationMessage(askPromptCopiedMessage(Buffer.byteLength(result.prompt, "utf8")));
         }
 
         // Replace prior flow state when the user starts again.
@@ -195,6 +196,7 @@ export async function runAsk(entry: AskEntry, deps: RunAskDeps): Promise<void> {
 
         return {
           ok: true,
+          payloadSize: formatPayloadSize(Buffer.byteLength(result.prompt, "utf8")),
           ...(result.badgerVersion
             ? { badgerVersion: result.badgerVersion }
             : {}),
@@ -234,12 +236,13 @@ export async function runAsk(entry: AskEntry, deps: RunAskDeps): Promise<void> {
         }
 
         await deps.ui.writeClipboard(extractResult.prompt);
-        deps.ui.showInformationMessage(PROMPT2_COPIED_MESSAGE);
+        deps.ui.showInformationMessage(requestedCodeCopiedMessage(Buffer.byteLength(extractResult.prompt, "utf8")));
         // Wizard stays open on the done panel (continue chatting / start again).
         // No open-provider actions — always recommend the same existing chat.
-        return extractResult.badgerVersion
-          ? { badgerVersion: extractResult.badgerVersion }
-          : undefined;
+        return {
+          payloadSize: formatPayloadSize(Buffer.byteLength(extractResult.prompt, "utf8")),
+          ...(extractResult.badgerVersion ? { badgerVersion: extractResult.badgerVersion } : {}),
+        };
       },
     });
   } finally {

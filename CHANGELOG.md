@@ -4,6 +4,12 @@ All notable changes to the AI Badger VS Code extension are documented here.
 
 ## [Unreleased]
 
+## [0.1.4] - 2026-09-29
+
+- Added copied payload sizes to Ask prompts, requested code, supplemental
+  Deep Review context, and workspace review requests.
+- Clarified that copied review requests should be pasted into an AI chat.
+
 ## [0.1.3] - 2026-09-03
 
 - Updated direct review prompts to request a brief, directional recommendation

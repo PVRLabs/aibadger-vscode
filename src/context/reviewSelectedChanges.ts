@@ -61,8 +61,8 @@ function errorMessage(reason: string): string {
 export function selectedCountMessage(count: number, byteLength: number): string {
   const size = formatByteSize(byteLength);
   return count === 1
-    ? `Copied review request for 1 selected file (${size}). Nothing is shared until you paste it.`
-    : `Copied review request for ${count} selected files (${size}). Nothing is shared until you paste it.`;
+    ? `Copied review request for 1 selected file (${size}). Paste it into your AI chat to get a review. Nothing is shared until you paste it.`
+    : `Copied review request for ${count} selected files (${size}). Paste it into your AI chat to get a review. Nothing is shared until you paste it.`;
 }
 
 function asScmResource(resource: unknown): ReviewScmResource | undefined {

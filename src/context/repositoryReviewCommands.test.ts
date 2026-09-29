@@ -34,6 +34,7 @@ suite("repository review commands", () => {
     assert.deepEqual(copied, ["review payload"]);
     assert.equal(errors.length, 0);
     assert.match(info[0], /2 changed files/);
+    assert.match(info[0], /Paste it into your AI chat to get a review\./);
     assert.match(info[0], /Nothing is shared until you paste it\./);
   });
 

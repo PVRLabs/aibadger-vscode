@@ -59,7 +59,7 @@ suite("copyWorkspaceChangesForReview", () => {
     assert.match(copied[0], /\[REPOSITORY: api\]/);
     assert.equal(
       info[0],
-      `Copied workspace review request for 2 repositories and 2 changed files (${formatPayloadSize(Buffer.byteLength(copied[0], "utf8"))}). Nothing is shared until you paste it.`
+      `Copied workspace review request for 2 repositories and 2 changed files (${formatPayloadSize(Buffer.byteLength(copied[0], "utf8"))}). Paste it into your AI chat to get a review. Nothing is shared until you paste it.`
     );
   });
 

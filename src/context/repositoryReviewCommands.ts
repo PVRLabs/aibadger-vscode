@@ -48,7 +48,7 @@ export function repositoryReviewSuccessMessage(
   byteLength: number
 ): string {
   const files = count === 1 ? "1 changed file" : `${count} changed files`;
-  return `Copied review request for ${files} (${formatByteSize(byteLength)}). Nothing is shared until you paste it.`;
+  return `Copied review request for ${files} (${formatByteSize(byteLength)}). Paste it into your AI chat to get a review. Nothing is shared until you paste it.`;
 }
 
 function failureMessage(reason: string): string {

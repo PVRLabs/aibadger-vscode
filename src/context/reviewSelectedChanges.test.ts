@@ -129,7 +129,7 @@ suite("reviewSelectedChanges", () => {
     await reviewSelectedChanges([resource("/repo/a.ts")], harness.base);
     assert.deepEqual(harness.copied, ["selected diff:a.ts"]);
     assert.deepEqual(harness.info, [
-      "Copied review request for 1 selected file (18 B). Nothing is shared until you paste it.",
+      "Copied review request for 1 selected file (18 B). Paste it into your AI chat to get a review. Nothing is shared until you paste it.",
     ]);
     assert.deepEqual(harness.errors, []);
   });

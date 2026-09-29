@@ -77,6 +77,6 @@ export async function copyWorkspaceChangesForReview(
   }
   const changedFiles = successful.reduce((total, result) => total + result.changedFiles.length, 0);
   deps.showInformationMessage(
-    `Copied workspace review request for ${repositories.length} ${repositories.length === 1 ? "repository" : "repositories"} and ${changedFiles} changed ${changedFiles === 1 ? "file" : "files"} (${formatPayloadSize(Buffer.byteLength(payload, "utf8"))}). Nothing is shared until you paste it.`
+    `Copied workspace review request for ${repositories.length} ${repositories.length === 1 ? "repository" : "repositories"} and ${changedFiles} changed ${changedFiles === 1 ? "file" : "files"} (${formatPayloadSize(Buffer.byteLength(payload, "utf8"))}). Paste it into your AI chat to get a review. Nothing is shared until you paste it.`
   );
 }

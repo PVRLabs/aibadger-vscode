@@ -1,7 +1,7 @@
 {
   "name": "ai-badger",
   "displayName": "AI Badger",
-  "description": "Review Git changes or copy focused code context into any AI chat, with optional repository-aware workflows powered by the local Badger CLI.",
+  "description": "Review Git changes and copy code context for ChatGPT, Claude, Gemini, Grok, or any AI chat. Local-first; Badger CLI optional.",
   "version": "0.1.4",
   "publisher": "pvrlabs",
   "license": "MIT",
@@ -20,6 +20,21 @@
   "categories": [
     "Other"
   ],
+  "keywords": [
+    "code review",
+    "AI code review",
+    "ChatGPT",
+    "Claude",
+    "Gemini",
+    "Grok",
+    "Git diff",
+    "LLM context",
+    "copy for AI",
+    "AI-generated code",
+    "code context",
+    "Git review"
+  ],
+  "qna": "https://github.com/PVRLabs/aibadger/discussions/categories/vs-code-extension",
   "activationEvents": [],
   "main": "./out/extension.js",
   "contributes": {

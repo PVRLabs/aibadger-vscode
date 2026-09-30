@@ -2,9 +2,11 @@
 
 ![AI Badger for VS Code Deep Review workflow](https://raw.githubusercontent.com/PVRLabs/aibadger-vscode/main/media/ai-badger-vscode-deep-review.jpg)
 
-Bring focused repository context into ChatGPT, Claude, Grok, or another AI chat, directly from VS Code.
+Review Git changes and copy focused code context into ChatGPT, Claude, Gemini, Grok, or any other AI chat, directly from VS Code.
 
-Start with **Copy All Changes for Review** for a fast review of Git changes. Use **Deep Review** when you need repository-aware context. You can also review selected or workspace changes, or ask about focused code from the VS Code Explorer.
+Start with **Copy All Changes for Review** to prepare your Git changes for an AI review, or select files in the Explorer and use **Copy File for AI** or **Copy Selected Files for AI**. Paste the result into your preferred AI chat.
+
+**The Badger CLI is optional.** Direct Git review (selected, repository, or workspace changes) and direct file copying work with the extension alone. Install the CLI for complementary repository-aware workflows: **Deep Review** and guided **Ask About** commands.
 
 **Local-first · AI-provider independent · No automatic uploads**
 
@@ -16,6 +18,7 @@ Start with **Copy All Changes for Review** for a fast review of Git changes. Use
 
 - **Review-first workflow:** Review selected changes, all changes in a repository, or changes across the workspace.
 - **Repository-aware review:** Deep Review uses the local Badger CLI to add focused topology and source context when needed.
+- **Direct file copying:** Copy selected files with project-relative paths into any AI chat, without the CLI.
 - **Focused context:** Give your AI chat the relevant code and a clear question instead of the whole repository.
 - **Local-first processing:** Review and context preparation happen in VS Code or through the CLI on your machine.
 
@@ -28,17 +31,20 @@ Start with **Copy All Changes for Review** for a fast review of Git changes. Use
 ## Install
 
 1. Install **AI Badger** from the [Visual Studio Marketplace](https://marketplace.visualstudio.com/items?itemName=pvrlabs.ai-badger).
-2. Open a repository in desktop VS Code. Quick file copy works from the Explorer, and Ask About workflows can start from a project, folder, or file.
-3. For the recommended review workflow, open the Source Control view for a Git repository with changes and choose **AI Badger: Copy All Changes for Review**. Use **AI Badger: Deep Review** when you need repository-aware context.
-4. To use Deep Review or the exploratory Ask About workflows, install the AI Badger CLI:
+2. For Git review, open a Git repository in desktop VS Code. In Source Control, choose **AI Badger: Copy All Changes for Review**, then paste the request into your AI chat.
+3. To share specific code, select files in the Explorer, right-click, and choose **AI Badger: Copy File for AI** or **AI Badger: Copy Selected Files for AI**.
 
-   ```bash
-   brew install pvrlabs/tap/badger
-   ```
+Both workflows work immediately without the Badger CLI. The extension is desktop-only; it is not a `vscode.dev` web extension.
 
-   For Windows and other installation methods, see the [AI Badger installation guide](https://github.com/PVRLabs/aibadger/blob/main/docs/install.md).
+### Optional: add repository-aware workflows
 
-Direct file copying and selected, repository, and workspace review do not require the CLI. The extension is desktop-only; it is not a `vscode.dev` web extension.
+The local [AI Badger CLI](https://github.com/PVRLabs/aibadger) is a complementary tool for **Deep Review** and guided **Ask About** workflows. Install it when you want the extension to prepare relevant repository context beyond the changes or files you select:
+
+```bash
+brew install pvrlabs/tap/badger
+```
+
+For Windows and other installation methods, see the [AI Badger installation guide](https://github.com/PVRLabs/aibadger/blob/main/docs/install.md).
 
 ## What you can do
 
@@ -68,21 +74,7 @@ The project command is available from the Explorer toolbar. File and folder comm
 
 ### Copy selected changes for review
 
-In a Git repository, select one or more changed files in Source Control, right-click, and choose **AI Badger: Copy Selected Changes for Review**. The extension copies a review request containing the selected files' complete Git diff. Small, readable modified, renamed, and non-sensitive untracked text files may also be included in full. Tracked additions and deleted files remain represented by Git's diff; binary contents are excluded; unavailable, changed, or oversized files are reported without full content; and sensitive untracked paths are omitted. Git's staged, unstaged, mixed, deleted, renamed, and untracked changes are represented by the selected diff, and unrelated files are not included.
-
-Each direct review request places `[REPOSITORY: <label>]` after the task
-framing and immediately before the repository review context. The label is
-the sanitized local repository directory basename only; it is bounded to 128
-UTF-8 bytes, kept on one line, and uses `repository` for an empty or root-like
-basename. It is display metadata, not a repository identity. The marker, all
-framing, and the diff count toward the 512 KiB request limit; optional full-file
-context remains limited to 64 KiB per file. Binary file contents and Git
-binary patch bodies are excluded; the selected diff retains Git's compact
-binary-change summary. For added, untracked, modified, and renamed binaries
-that still exist, `[ADDITIONAL CONTEXT]` records the path, change kind, and
-inferred type. Deleted binaries rely on Git's deletion summary. If the
-mandatory framing and diff exceed 512 KiB, select fewer files. Nothing is
-shared until you paste the clipboard contents into an AI chat.
+In a Git repository, select one or more changed files in Source Control, right-click, and choose **AI Badger: Copy Selected Changes for Review**. The extension copies a review request with the selected files' complete Git diff and optional supporting text context. This works without the CLI; paste the request into your AI chat to review just those changes.
 
 ### Copy all changes for review
 
@@ -90,14 +82,7 @@ From a Git repository in the Source Control view, choose **AI Badger: Copy All C
 
 ![Quick Review workflow: copy Git changes and paste them into an AI chat](media/badger-review-flow.webp)
 
-For a multi-repository workspace, choose **AI Badger: Copy Workspace Changes
-for Review** from the Command Palette or the aggregate **Changes** title. It
-copies one request with an outer review task and a `[REPOSITORY: <label>]`
-section for every open Git repository that currently has changes. Labels use
-only local repository directory basenames; duplicate basenames may produce
-identical labels. The operation has no picker and is atomic: if any included
-repository cannot be prepared or the complete request does not fit, the
-clipboard is left unchanged.
+For a multi-repository workspace, choose **AI Badger: Copy Workspace Changes for Review** from the Command Palette or the aggregate **Changes** title. It copies one request covering every open Git repository with changes, keeping each repository's context in its own section. This also works without the CLI. If any repository cannot be prepared or the complete request does not fit, the clipboard is left unchanged.
 
 These Git Source Control actions are available from the repository actions and
 the **Changes** group. These commands require an explicit user action; nothing is sent
@@ -109,34 +94,13 @@ anywhere automatically.
 | <img src="media/copy-readme.png" alt="Direct copy" width="16" height="16"> | **AI Badger: Copy Workspace Changes for Review** | Copies all changed open Git repositories as one marked, repository-scoped request. |
 | <img src="media/copy-two-step-readme.png" alt="Two-step copy" width="16" height="16"> | **AI Badger: Deep Review** | Opens editable guidance and, after Copy, asks local Badger for a topology-aware review request. |
 
-Direct repository and workspace review use 512 KiB complete-request
-limits and 64 KiB per-file limits for optional complete text context. Workspace
-review counts section markers and separators in that limit, divides the
-optional-context capacity equally among its repository sections, and reports
-omitted file context within each section. These flows preserve the authoritative
-diff and omit binary contents while retaining compact Git change summaries. A
-clean repository or workspace has no changes to copy. Workspace review is
-implemented entirely by the extension and does not invoke Badger. Nothing is
-shared until you explicitly copy and paste the generated request into an AI chat.
+For request size limits, repository labels, and file inclusion details, see the [review context guide](https://github.com/PVRLabs/aibadger-vscode/blob/main/docs/review-context.md).
 
 ### Deep Review
 
 ![Deep Review workflow: generate a repository-aware review and provide requested context](media/badger-deep-review-flow.webp)
 
-**AI Badger: Deep Review** opens editable guidance and, after Copy, asks the
-local Badger CLI for a topology-aware review request. Deep Review uses a 512 KiB
-complete-request limit and a 64 KiB per-file limit for optional complete text
-context. These Badger-owned limits may be explicitly overridden by a caller;
-successful marked CLI output is copied verbatim and is not double-framed by the
-extension. The flow preserves the authoritative diff and omits binary contents
-while retaining compact Git change summaries.
-
-Badger CLI v0.4.0 is the first released version supporting the separate Deep
-Review operations `api review-context --include-topology` and
-`api review-continuation`; compatibility remains capability-based, and missing
-or incompatible executables use the normal recovery flow without a
-topology-free fallback. Nothing is shared until you explicitly copy and paste
-the generated request into an AI chat.
+**AI Badger: Deep Review** requires the optional local Badger CLI. It opens editable guidance and, after Copy, prepares a review request with repository topology and source context. Paste the request into your AI chat to begin the review. Nothing is shared automatically.
 
 Deep Review may receive final findings immediately. If the AI instead responds with only valid `FILE:`, `PREFIX:`, or `NEAR:` selectors, choose **Continue Review** to copy current supplemental context from the same repository. Findings-only responses finish locally; mixed or malformed responses remain editable. Supplemental context is stateless and may reflect newer filesystem state than the initial review request.
 
@@ -148,11 +112,13 @@ After a successful local Badger operation, the reusable assisted-flow header sho
 - Direct repository and workspace review run locally in the extension, inspect only the explicitly targeted open Git repositories, and write one completed request to the clipboard only after every repository succeeds.
 - Smart context invokes the local AI Badger CLI and does not upload your repository to PVR Labs.
 - It does not bundle or host an AI model, and it does not require an AI-provider API key.
-- You control what generated context is copied and pasted into ChatGPT, Claude, Grok, or another external AI service.
+- You control what generated context is copied and pasted into ChatGPT, Claude, Gemini, Grok, or another external AI service.
 
 Smart context sends selected paths and workflow input to the local CLI. If you deliberately paste generated context into an external AI service, that service receives what you pasted under its own terms.
 
 ## Configuration and troubleshooting
+
+These CLI settings apply to Deep Review and guided Ask workflows. Direct Git review and file copying need no CLI setup.
 
 - Verify the CLI with `badger --version`.
 - If you installed the CLI while VS Code was open, restart VS Code so it can see the updated `PATH`.
@@ -163,7 +129,9 @@ See the [CLI compatibility guide](https://github.com/PVRLabs/aibadger-vscode/blo
 
 ## Support
 
-Report Explorer, command, setup, webview, or VS Code integration issues in the [extension repository](https://github.com/PVRLabs/aibadger-vscode/issues). Report CLI or generated-context issues in the [main AI Badger repository](https://github.com/PVRLabs/aibadger/issues).
+- **Questions, ideas, and workflow discussion:** [AI Badger Discussions — VS Code Extension](https://github.com/PVRLabs/aibadger/discussions/categories/vs-code-extension).
+- **Extension-specific bugs:** [AI Badger for VS Code Issues](https://github.com/PVRLabs/aibadger-vscode/issues), including Explorer commands, setup, webviews, and VS Code integration.
+- **CLI-specific bugs:** [AI Badger CLI Issues](https://github.com/PVRLabs/aibadger/issues), including failures in CLI operations or context generated by the CLI.
 
 ## Development
 

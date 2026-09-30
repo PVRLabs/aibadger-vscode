@@ -44,7 +44,7 @@ export function validateArchiveFiles(entries) {
   const required = [
     "extension/package.json",
     "extension/out/extension.js",
-    "extension/LICENSE",
+    "extension/LICENSE.txt",
     "extension/media/ai-badger-icon.png",
   ];
   const missing = required.filter((entry) => !files.has(entry));

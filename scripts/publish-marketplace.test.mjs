@@ -37,7 +37,7 @@ test("checks required runtime files and rejects development or secret files", ()
   const required = [
     "extension/package.json",
     "extension/out/extension.js",
-    "extension/LICENSE",
+    "extension/LICENSE.txt",
     "extension/media/ai-badger-icon.png",
   ];
   assert.deepEqual(validateArchiveFiles(required), required);

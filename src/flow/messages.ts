@@ -196,7 +196,7 @@ export function handoffStepsAfterOpen(
   return [];
 }
 
-/** Multline AI-response field placeholder. */
+/** Multiline AI-response field placeholder. */
 export const AI_RESPONSE_PLACEHOLDER =
   "Paste the AI response here (FILE: / PREFIX: / NEAR: lines)";
 
@@ -232,14 +232,15 @@ export const DONE_CLOSE_LABEL = "Close";
 
 /**
  * Optional, collapsible visual guide (step 2). It starts collapsed and is never required.
- * When a real animation ships, it carries the workflow detail; the short
- * instruction above stays a short paragraph.
+ * The animation illustrates copying the project map, pasting the AI's file
+ * requests back into Badger, and copying the requested files into the same chat.
  */
 export const HANDOFF_OPTIONAL_GUIDE_TITLE = "See the handoff flow";
 
 export const HANDOFF_OPTIONAL_GUIDE = "";
 
-export const HANDOFF_OPTIONAL_GUIDE_MEDIA_LABEL = "";
+export const HANDOFF_OPTIONAL_GUIDE_MEDIA_LABEL =
+  "Copy the project map into an AI chat, paste the AI's file requests back into AI Badger, then copy the requested files into the same chat.";
 
 export const HANDOFF_GUIDE_LINK_LABEL = "Read the full handoff guide";
 

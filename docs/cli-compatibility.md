@@ -1,7 +1,8 @@
 # AI Badger CLI compatibility
 
-The extension is a desktop integration for a separately installed AI Badger
-CLI. It does not download or bundle the CLI.
+Deep Review and guided Ask workflows use a separately installed local AI Badger
+CLI. Direct file copying and selected, repository, and workspace review work
+without it. The extension does not download or bundle the CLI.
 
 Compatibility is capability-based rather than tied to a CLI version number.
 Badger CLI v0.4.0 is the first released version containing all operations

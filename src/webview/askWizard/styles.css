@@ -270,7 +270,7 @@ h1 {
   text-align: center;
   line-height: 1.4;
 }
-label.sr {
+.sr {
   position: absolute;
   width: 1px;
   height: 1px;

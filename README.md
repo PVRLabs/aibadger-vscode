@@ -38,7 +38,7 @@ Start with **Copy All Changes for Review** for a fast review of Git changes. Use
 
    For Windows and other installation methods, see the [AI Badger installation guide](https://github.com/PVRLabs/aibadger/blob/main/docs/install.md).
 
-Direct repository and workspace review do not require the CLI. The extension is desktop-only; it is not a `vscode.dev` web extension.
+Direct file copying and selected, repository, and workspace review do not require the CLI. The extension is desktop-only; it is not a `vscode.dev` web extension.
 
 ## What you can do
 
@@ -100,7 +100,7 @@ repository cannot be prepared or the complete request does not fit, the
 clipboard is left unchanged.
 
 These Git Source Control actions are available from the repository actions and
-the **Changes** group. Both require an explicit user action; nothing is sent
+the **Changes** group. These commands require an explicit user action; nothing is sent
 anywhere automatically.
 
 | Icon | Source Control action | Current behavior |

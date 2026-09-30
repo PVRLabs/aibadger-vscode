@@ -1,6 +1,7 @@
 import * as assert from "assert";
 import * as fs from "fs";
 import * as path from "path";
+import { HANDOFF_OPTIONAL_GUIDE_MEDIA_LABEL } from "./messages";
 import {
   buildWizardHtml,
   renderWizardTemplate,
@@ -8,6 +9,21 @@ import {
 } from "./askWizardHtml";
 
 suite("ask wizard webview html", () => {
+  test("handoff animation has a visually hidden text alternative", () => {
+    assert.ok(HANDOFF_OPTIONAL_GUIDE_MEDIA_LABEL.trim().length > 0);
+    const template = fs.readFileSync(
+      path.join(__dirname, "..", "webview", "askWizard", "index.html"),
+      "utf8"
+    );
+    const styles = fs.readFileSync(
+      path.join(__dirname, "..", "webview", "askWizard", "styles.css"),
+      "utf8"
+    );
+    assert.ok(template.includes('class="guide-media-label sr"'));
+    assert.ok(template.includes('class="handoff-demo" aria-hidden="true"'));
+    assert.match(styles, /(?:^|\n)\.sr\s*\{[^}]*clip: rect\(0,0,0,0\)/);
+  });
+
   test("compiles Step 1 handlers and selector fallback into the webview bundle", () => {
     const bundle = fs.readFileSync(
       path.join(__dirname, "..", "webview", "askWizard", "main.js"),

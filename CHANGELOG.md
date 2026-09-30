@@ -4,6 +4,14 @@ All notable changes to the AI Badger VS Code extension are documented here.
 
 ## [Unreleased]
 
+## [0.1.5] - 2026-09-30
+
+- Clarified that direct file copying and Git review work without the optional
+  Badger CLI, and repositioned the CLI for Deep Review and guided Ask workflows.
+- Improved onboarding, support links, and handoff guide accessibility; added a
+  review-context reference.
+- Fixed VSIX license path validation.
+
 ## [0.1.4] - 2026-09-29
 
 - Added copied payload sizes to Ask prompts, requested code, supplemental

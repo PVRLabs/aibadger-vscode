@@ -184,7 +184,7 @@ export async function reviewSelectedChanges(
     );
     if (!payload.ok) {
       deps.showErrorMessage(
-        "The selected review request is too large to copy. Select fewer files and try again."
+        "The selected review request is too large to copy. Select fewer changed files in Source Control and retry."
       );
       return;
     }

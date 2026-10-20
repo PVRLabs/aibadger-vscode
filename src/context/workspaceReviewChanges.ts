@@ -6,7 +6,7 @@ import { formatPayloadSize } from "../shared/formatPayloadSize";
 
 export const WORKSPACE_REVIEW_NO_CHANGE_MESSAGE = "No workspace changes to copy for review.";
 export const WORKSPACE_REVIEW_FAILED_MESSAGE = "Could not prepare all workspace changes for review.";
-export const WORKSPACE_REVIEW_OVERFLOW_MESSAGE = "The workspace review request is too large to copy.";
+export const WORKSPACE_REVIEW_OVERFLOW_MESSAGE = "The review request is too large to copy. Select fewer changed files in Source Control, then right-click and choose AI Badger: Copy Selected Changes for Review.";
 export const WORKSPACE_REVIEW_COPY_FAILURE_MESSAGE = "Could not write the workspace review request to the clipboard.";
 
 export type WorkspaceReviewDeps = {

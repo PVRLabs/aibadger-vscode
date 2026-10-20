@@ -141,6 +141,7 @@ suite("copyWorkspaceChangesForReview", () => {
       showErrorMessage: (message) => { errors.push(message); },
     });
     assert.deepEqual(errors, [WORKSPACE_REVIEW_OVERFLOW_MESSAGE]);
+    assert.match(errors[0], /Select fewer changed files in Source Control, then right-click and choose AI Badger: Copy Selected Changes for Review/);
   });
 
   test("reports clipboard failure without claiming success", async () => {
@@ -180,5 +181,6 @@ suite("copyWorkspaceChangesForReview", () => {
     });
     assert.deepEqual(copied, []);
     assert.deepEqual(errors, [WORKSPACE_REVIEW_OVERFLOW_MESSAGE]);
+    assert.match(errors[0], /Select fewer changed files in Source Control, then right-click and choose AI Badger: Copy Selected Changes for Review/);
   });
 });

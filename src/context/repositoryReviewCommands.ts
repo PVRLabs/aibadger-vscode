@@ -20,7 +20,7 @@ export const REPOSITORY_REVIEW_GIT_UNAVAILABLE_MESSAGE =
 export const REPOSITORY_REVIEW_GIT_FAILED_MESSAGE =
   "Git could not prepare the repository changes for review.";
 export const REPOSITORY_REVIEW_OVERFLOW_MESSAGE =
-  "The repository review request is too large to copy.";
+  "The review request is too large to copy. Select fewer changed files in Source Control, then right-click and choose AI Badger: Copy Selected Changes for Review.";
 export const REPOSITORY_REVIEW_COPY_FAILURE_MESSAGE =
   "Could not write the review request to the clipboard.";
 

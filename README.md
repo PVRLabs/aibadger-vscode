@@ -76,6 +76,13 @@ The project command is available from the Explorer toolbar. File and folder comm
 
 In a Git repository, select one or more changed files in Source Control, right-click, and choose **AI Badger: Copy Selected Changes for Review**. The extension copies a review request with the selected files' complete Git diff and optional supporting text context. This works without the CLI; paste the request into your AI chat to review just those changes.
 
+If a repository or workspace review is too large to copy, select fewer changed
+files in Source Control, then right-click and choose **AI Badger: Copy Selected
+Changes for Review**. For example, leave large CSV/backfill files unselected
+and review the code, tests, and documentation separately. If a selected review
+is still too large, select fewer changed files and retry. A failed review
+leaves your clipboard unchanged.
+
 ### Copy all changes for review
 
 From a Git repository in the Source Control view, choose **AI Badger: Copy All Changes for Review**. The action copies one self-contained review request for that repository's current staged, unstaged, untracked, renamed, and deleted changes. It does not require the Badger CLI and never includes changes from another repository.

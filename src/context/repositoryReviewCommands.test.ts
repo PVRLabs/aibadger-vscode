@@ -65,4 +65,18 @@ suite("repository review commands", () => {
     assert.equal(errors.at(-1), REPOSITORY_REVIEW_NO_CHANGE_MESSAGE);
   });
 
+  test("oversized review points to Source Control selection and preserves clipboard", async () => {
+    const copied: string[] = [];
+    const errors: string[] = [];
+    await copyAllChangesForReview(target(), {
+      buildPayload: async () => ({ ok: false, reason: "mandatory-overflow", byteLength: 600000 }),
+      writeClipboard: async (text) => { copied.push(text); },
+      showInformationMessage: () => undefined,
+      showErrorMessage: (message) => errors.push(message),
+    });
+    assert.deepEqual(copied, []);
+    assert.equal(errors.length, 1);
+    assert.match(errors[0], /too large to copy/);
+    assert.match(errors[0], /Select fewer changed files in Source Control, then right-click and choose AI Badger: Copy Selected Changes for Review/);
+  });
 });

@@ -183,7 +183,7 @@ suite("reviewSelectedChanges", () => {
     });
     await reviewSelectedChanges([resource("/repo/a.ts")], harness.base);
     assert.deepEqual(harness.copied, []);
-    assert.match(harness.errors[0], /too large.*Select fewer files/);
+    assert.match(harness.errors[0], /too large.*Select fewer changed files in Source Control and retry/);
   });
 
   test("reports clipboard failures without showing success", async () => {

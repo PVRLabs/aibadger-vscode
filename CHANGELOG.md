@@ -4,6 +4,13 @@ All notable changes to the AI Badger VS Code extension are documented here.
 
 ## [Unreleased]
 
+## [0.1.6] - 2026-10-22
+
+- Improved oversized review messages with instructions to select fewer changed
+  files in Source Control and use **AI Badger: Copy Selected Changes for Review**.
+- Documented how to split large reviews into smaller selections and clarified
+  that failed reviews leave the clipboard unchanged.
+
 ## [0.1.5] - 2026-09-30
 
 - Clarified that direct file copying and Git review work without the optional

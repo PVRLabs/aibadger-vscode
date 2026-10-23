@@ -9,6 +9,10 @@ CLI or private specification context.
 Keep extension behavior and webview contracts synchronized. Add focused tests
 for changed behavior and avoid unrelated package, build, or dependency edits.
 
+Preserve lazy, command-triggered activation. Prefer built-in VS Code context
+keys for menu visibility; do not add startup activation solely to initialize
+menu state. Keep runtime capability checks independent of menu visibility.
+
 ## Verification
 
 Use pinned dependencies from `package-lock.json`.

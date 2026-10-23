@@ -4,6 +4,11 @@ All notable changes to the AI Badger VS Code extension are documented here.
 
 ## [Unreleased]
 
+- Added macOS Explorer actions to copy one or more images (PNG, JPEG, WebP,
+  GIF) or attachments (PDF, ZIP, DOCX, PPTX, XLSX) for pasting into AI chats.
+  Each action copies supported files in its category and warns about skipped
+  items. Existing formatted-text copying remains available.
+
 ## [0.1.6] - 2026-10-22
 
 - Improved oversized review messages with instructions to select fewer changed

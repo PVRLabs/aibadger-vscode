@@ -2,10 +2,12 @@ import * as assert from "assert";
 import * as vscode from "vscode";
 
 suite("AI Badger extension shell", () => {
-  test("extension activates", async () => {
+  test("invoking a contributed attachment command activates the extension", async () => {
     const ext = vscode.extensions.getExtension("pvrlabs.ai-badger");
     assert.ok(ext, "extension should be present");
-    await ext.activate();
+    assert.deepStrictEqual(ext.packageJSON.activationEvents, []);
+    // No selection: exercises command activation without changing the clipboard.
+    await vscode.commands.executeCommand("aiBadger.copyImageForAI");
     assert.strictEqual(ext.isActive, true);
   });
 
@@ -17,6 +19,10 @@ suite("AI Badger extension shell", () => {
     assert.ok(commands.includes("aiBadger.askAboutSelectedFiles"));
     assert.ok(commands.includes("aiBadger.copyFileForAI"));
     assert.ok(commands.includes("aiBadger.copyFilesForAI"));
+    assert.ok(commands.includes("aiBadger.copyImageForAI"));
+    assert.ok(commands.includes("aiBadger.copyImagesForAI"));
+    assert.ok(commands.includes("aiBadger.copyFileAsAttachment"));
+    assert.ok(commands.includes("aiBadger.copyFilesAsAttachments"));
     assert.ok(commands.includes("aiBadger.reviewSelectedChanges"));
     assert.ok(commands.includes("aiBadger.copyAllChangesForReview"));
     assert.ok(commands.includes("aiBadger.copyWorkspaceChangesForReview"));

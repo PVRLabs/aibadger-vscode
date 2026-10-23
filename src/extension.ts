@@ -1,3 +1,4 @@
+import { registerNativeAttachments } from "./nativeAttachments";
 import * as vscode from "vscode";
 import * as path from "path";
 import {
@@ -77,6 +78,7 @@ export function activate(
   client?: BadgerClient,
   reviewClient?: BadgerReviewClient
 ): void {
+  registerNativeAttachments(context);
   const runtime = client ? undefined : createDefaultBadgerRuntime();
   const copyFilesDeps = createVscodeCopyFilesDeps();
   const deps = {

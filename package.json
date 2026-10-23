@@ -124,6 +124,26 @@
           "light": "media/copy-two-step.svg",
           "dark": "media/copy-two-step-dark.svg"
         }
+      },
+      {
+        "command": "aiBadger.copyImageForAI",
+        "title": "AI Badger: Copy Image for AI Chat",
+        "enablement": "isMac && !remoteName"
+      },
+      {
+        "command": "aiBadger.copyImagesForAI",
+        "title": "AI Badger: Copy Images for AI Chat",
+        "enablement": "isMac && !remoteName"
+      },
+      {
+        "command": "aiBadger.copyFileAsAttachment",
+        "title": "AI Badger: Copy File as Attachment",
+        "enablement": "isMac && !remoteName"
+      },
+      {
+        "command": "aiBadger.copyFilesAsAttachments",
+        "title": "AI Badger: Copy Files as Attachments",
+        "enablement": "isMac && !remoteName"
       }
     ],
     "menus": {
@@ -159,6 +179,26 @@
           "command": "aiBadger.copyFilesForAI",
           "when": "!explorerResourceIsFolder && resourceScheme == file && listMultiSelection",
           "group": "navigation@90"
+        },
+        {
+          "command": "aiBadger.copyImageForAI",
+          "when": "isMac && !remoteName && resourceScheme == file && !explorerResourceIsFolder && resourceExtname =~ /\\.(png|jpe?g|webp|gif)$/i && !listMultiSelection",
+          "group": "navigation@92"
+        },
+        {
+          "command": "aiBadger.copyImagesForAI",
+          "when": "isMac && !remoteName && resourceScheme == file && !explorerResourceIsFolder && resourceExtname =~ /\\.(png|jpe?g|webp|gif)$/i && listMultiSelection",
+          "group": "navigation@92"
+        },
+        {
+          "command": "aiBadger.copyFileAsAttachment",
+          "when": "isMac && !remoteName && resourceScheme == file && !explorerResourceIsFolder && resourceExtname =~ /\\.(pdf|zip|docx|pptx|xlsx)$/i && !listMultiSelection",
+          "group": "navigation@92"
+        },
+        {
+          "command": "aiBadger.copyFilesAsAttachments",
+          "when": "isMac && !remoteName && resourceScheme == file && !explorerResourceIsFolder && resourceExtname =~ /\\.(pdf|zip|docx|pptx|xlsx)$/i && listMultiSelection",
+          "group": "navigation@92"
         }
       ],
       "scm/resourceState/context": [
@@ -266,6 +306,22 @@
         },
         {
           "command": "aiBadger.copyFilesForAI",
+          "when": "false"
+        },
+        {
+          "command": "aiBadger.copyImageForAI",
+          "when": "false"
+        },
+        {
+          "command": "aiBadger.copyImagesForAI",
+          "when": "false"
+        },
+        {
+          "command": "aiBadger.copyFileAsAttachment",
+          "when": "false"
+        },
+        {
+          "command": "aiBadger.copyFilesAsAttachments",
           "when": "false"
         }
       ]

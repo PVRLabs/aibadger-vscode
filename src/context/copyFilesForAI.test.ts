@@ -1,3 +1,4 @@
+import { formatPayloadSize } from "../shared/formatPayloadSize";
 import * as assert from "assert";
 import {
   CROSS_WORKSPACE_MESSAGE,
@@ -32,6 +33,7 @@ type Harness = {
   deps: CopyFilesDeps;
   clipboard: string[];
   infos: string[];
+  warnings: string[];
   errors: string[];
   reads: string[];
   setActive(value: TestUri | undefined): void;
@@ -42,6 +44,7 @@ type Harness = {
 function createHarness(): Harness {
   const clipboard: string[] = [];
   const infos: string[] = [];
+  const warnings: string[] = [];
   const errors: string[] = [];
   const reads: string[] = [];
   const folders = new Map<string, boolean>();
@@ -67,6 +70,7 @@ function createHarness(): Harness {
     writeClipboard: async (text) => {
       clipboard.push(text);
     },
+    showWarningMessage: (message) => warnings.push(message),
     showInformationMessage: (message) => infos.push(message),
     showErrorMessage: (message) => errors.push(message),
   };
@@ -75,6 +79,7 @@ function createHarness(): Harness {
     deps,
     clipboard,
     infos,
+    warnings,
     errors,
     reads,
     setActive(value) {
@@ -145,6 +150,8 @@ suite("copyFilesForAI", () => {
     assert.deepStrictEqual(harness.infos, [
       copySuccessMessage(1, Buffer.byteLength(harness.clipboard[0], "utf8")),
     ]);
+    assert.deepStrictEqual(harness.warnings, []);
+    assert.deepStrictEqual(harness.errors, []);
     assert.strictEqual(harness.reads.length, 0);
   });
 
@@ -229,6 +236,35 @@ suite("copyFilesForAI", () => {
     assert.ok(harness.clipboard[0].includes("[EXCLUDED FILES]"));
     assert.ok(harness.clipboard[0].includes(`large.txt (${PER_FILE_EXCLUSION_REASON})`));
     assert.ok(!harness.clipboard[0].includes("--- File: large.txt"));
+    assert.deepStrictEqual(harness.infos, []);
+    assert.deepStrictEqual(harness.warnings, [
+      `No file contents copied. Exclusion details copied to the clipboard (${formatPayloadSize(Buffer.byteLength(harness.clipboard[0], "utf8"))}). 1 file was excluded due to size limits.`,
+    ]);
+  });
+
+  test("warns when a per-file size limit excludes part of the selection", async () => {
+    const harness = createHarness();
+    const small = uri("small.txt");
+    const large = uri("large.txt");
+    harness.setContents(small, "included text");
+    harness.setContents(large, "a".repeat(MAX_COPY_FILE_BYTES + 1));
+    await copyFilesForAI(small, [small, large], harness.deps);
+    assert.deepStrictEqual(harness.infos, []);
+    assert.deepStrictEqual(harness.errors, []);
+    assert.deepStrictEqual(harness.warnings, [
+      `Copied 1 of 2 files to the clipboard (${formatPayloadSize(Buffer.byteLength(harness.clipboard[0], "utf8"))}). 1 file was excluded due to size limits.`,
+    ]);
+    assert.ok(harness.clipboard[0].includes("included text"));
+    assert.ok(harness.clipboard[0].includes(`large.txt (${PER_FILE_EXCLUSION_REASON})`));
+  });
+
+  test("reports clipboard failures as errors without a success notification", async () => {
+    const harness = createHarness();
+    harness.deps.writeClipboard = async () => { throw new Error("Clipboard unavailable"); };
+    await copyFilesForAI(uri("a.txt"), undefined, harness.deps);
+    assert.deepStrictEqual(harness.errors, ["Clipboard unavailable"]);
+    assert.deepStrictEqual(harness.infos, []);
+    assert.deepStrictEqual(harness.warnings, []);
   });
 
   test("lists later files excluded to enforce the complete payload limit", async () => {
@@ -251,8 +287,9 @@ suite("copyFilesForAI", () => {
     );
     assert.ok(harness.clipboard[0].includes("[EXCLUDED FILES]"));
     assert.ok(harness.clipboard[0].includes(TOTAL_PAYLOAD_EXCLUSION_REASON));
-    assert.deepStrictEqual(harness.infos, [
-      "Copied context for 5 selected files (1.0 MB). 3 files were listed but excluded by payload limits.",
+    assert.deepStrictEqual(harness.infos, []);
+    assert.deepStrictEqual(harness.warnings, [
+      "Copied 2 of 5 files to the clipboard (1.0 MB). 3 files were excluded due to size limits.",
     ]);
   });
 });

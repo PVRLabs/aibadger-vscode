@@ -466,6 +466,9 @@ function createVscodeCopyFilesDeps(): CopyFilesDeps {
     readFile: async (uri) =>
       vscode.workspace.fs.readFile(uri as vscode.Uri),
     writeClipboard: async (text) => vscode.env.clipboard.writeText(text),
+    showWarningMessage: (message) => {
+      void vscode.window.showWarningMessage(message);
+    },
     showInformationMessage: (message) => {
       void vscode.window.showInformationMessage(message);
     },

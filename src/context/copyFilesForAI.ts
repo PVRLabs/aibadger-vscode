@@ -48,6 +48,7 @@ export type CopyFilesDeps = {
   readFile(uri: CopyUri): Promise<Uint8Array>;
   writeClipboard(text: string): Promise<void>;
   showInformationMessage(message: string): void;
+  showWarningMessage(message: string): void;
   showErrorMessage(message: string): void;
 };
 
@@ -158,10 +159,12 @@ function copyResultMessage(
   if (excludedCount === 0) {
     return copySuccessMessage(selectedCount, payloadBytes);
   }
+  const includedCount = selectedCount - excludedCount;
   const noun = excludedCount === 1 ? "file was" : "files were";
-  return `Copied context for ${selectedCount} selected ${
-    selectedCount === 1 ? "file" : "files"
-  } (${formatPayloadSize(payloadBytes)}). ${excludedCount} ${noun} listed but excluded by payload limits.`;
+  const result = includedCount === 0
+    ? `No file contents copied. Exclusion details copied to the clipboard (${formatPayloadSize(payloadBytes)}).`
+    : `Copied ${includedCount} of ${selectedCount} files to the clipboard (${formatPayloadSize(payloadBytes)}).`;
+  return `${result} ${excludedCount} ${noun} excluded due to size limits.`;
 }
 
 export async function copyFilesForAI(
@@ -259,15 +262,17 @@ export async function copyFilesForAI(
     );
     const initial = fitPayload(files, excludedFiles);
 
-    const count = validated.length;
     await deps.writeClipboard(initial.payload);
-    deps.showInformationMessage(
-      copyResultMessage(
-        count,
-        initial.excludedCount,
-        Buffer.byteLength(initial.payload, "utf8")
-      )
+    const message = copyResultMessage(
+      validated.length,
+      initial.excludedCount,
+      Buffer.byteLength(initial.payload, "utf8")
     );
+    if (initial.excludedCount > 0) {
+      deps.showWarningMessage(message);
+    } else {
+      deps.showInformationMessage(message);
+    }
   } catch (error) {
     deps.showErrorMessage(
       error instanceof Error ? error.message : UNSUPPORTED_SELECTION_MESSAGE

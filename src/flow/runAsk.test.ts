@@ -1,3 +1,10 @@
+import {
+  buildSelectedFileContext,
+  MAX_COPY_FILE_BYTES,
+  MAX_COPY_PAYLOAD_BYTES,
+  PER_FILE_EXCLUSION_REASON,
+  TOTAL_PAYLOAD_EXCLUSION_REASON,
+} from "../context/copyFilesForAI";
 import * as assert from "assert";
 import * as path from "path";
 import type {
@@ -67,6 +74,9 @@ type Harness = {
   extractCalls: ExtractRequest[];
   clipboard: string[];
   infos: string[];
+  warnings: string[];
+  summaryNote?: string;
+  summaryTitle?: string;
   errors: string[];
   openedUrls: string[];
   lastProviderId: string | undefined;
@@ -90,6 +100,9 @@ function createHarness(options: {
   const extractCalls: ExtractRequest[] = [];
   const clipboard: string[] = [];
   const infos: string[] = [];
+  const warnings: string[] = [];
+  let summaryNote: string | undefined;
+  let summaryTitle: string | undefined;
   const errors: string[] = [];
   const openedUrls: string[] = [];
   let lastProviderId: string | undefined;
@@ -138,6 +151,8 @@ function createHarness(options: {
       errors.push(prepareResult.message);
       return undefined;
     }
+    summaryNote = prepareResult.summaryNote;
+    summaryTitle = prepareResult.summaryTitle;
     // Capture last prepare summary for assertions (not full prompt).
     lastPrepareSummaryLines = prepareResult.summaryLines
       ? [...prepareResult.summaryLines]
@@ -200,6 +215,7 @@ function createHarness(options: {
     writeClipboard: async (text) => {
       clipboard.push(text);
     },
+    showWarningMessage: (message) => { warnings.push(message); },
     showInformationMessage: (message) => {
       infos.push(message);
     },
@@ -237,6 +253,9 @@ function createHarness(options: {
     extractCalls,
     clipboard,
     infos,
+    warnings,
+    get summaryNote() { return summaryNote; },
+    get summaryTitle() { return summaryTitle; },
     errors,
     openedUrls,
     get lastProviderId() {
@@ -558,9 +577,9 @@ suite("runAsk step 2 copy-requested-files + done panel", () => {
     assert.strictEqual(HANDOFF_STEP_INDICATOR, "Step 2 of 2");
     assert.strictEqual(REQUEST_INPUT_PROMPT, "What do you want help with?");
     assert.strictEqual(HANDOFF_HEADLINE, "Prompt copied to clipboard.");
-    assert.ok(HANDOFF_INSTRUCTION.includes("Paste it into an AI chat"));
-    assert.ok(HANDOFF_INSTRUCTION.includes("ask for specific files"));
-    assert.ok(HANDOFF_MESSAGE.includes("paste the AI"));
+    assert.ok(HANDOFF_INSTRUCTION.includes("Paste the prompt into an AI chat"));
+    assert.ok(HANDOFF_INSTRUCTION.includes("If the AI needs additional files"));
+    assert.ok(HANDOFF_MESSAGE.includes("paste its FILE:, PREFIX:, or NEAR: requests below"));
   });
 
   test("copy button gate: prose without FILE: does not extract", async () => {
@@ -771,5 +790,99 @@ suite("runAsk Step 1 copy / copy-and-open", () => {
       h.infos.includes(requestedCodeCopiedMessage(Buffer.byteLength(h.clipboard[1], "utf8"))),
       "done messaging stays continue-same-chat"
     );
+  });
+});
+
+
+suite("file Ask includes direct-copy source context", () => {
+  for (const scenario of ["eligible", "unsaved", "oversized", "binary", "aggregate"] as const) {
+    test(scenario, async () => {
+      const h = createHarness({});
+      if (scenario === "aggregate") h.setWizard({ goal: "Explain these files", openProviderId: "chatgpt" });
+      const files = scenario === "aggregate" ? ["one.ts", "two.ts", "three.ts"] : ["src/main.ts"];
+      const paths = files.map((file) => path.join(rootA, file));
+      const reads: string[] = [];
+      h.deps.addFileContext = async (prompt, projectRoot, selected) => {
+        assert.equal(projectRoot, rootA);
+        assert.deepEqual(selected, paths);
+        const result = await buildSelectedFileContext(selected.map((fsPath) => ({
+          uri: { fsPath, toString: () => fsPath },
+          relativePath: path.relative(projectRoot, fsPath),
+        })), {
+          getOpenDocumentText: () => scenario === "unsaved" ? "unsaved edit" : undefined,
+          readFile: async (uri) => {
+            reads.push(uri.fsPath);
+            return scenario === "binary" ? new Uint8Array([0, 255]) : Buffer.from(
+              scenario === "oversized" ? "x".repeat(MAX_COPY_FILE_BYTES + 1) :
+              scenario === "aggregate" ? "x".repeat(MAX_COPY_FILE_BYTES) : "selected source"
+            );
+          },
+        }, `${prompt}\n\n`);
+        return result;
+      };
+      await runAsk({ kind: "file", resourcePath: paths[0], selectedResourcePaths: paths }, h.deps);
+      assert.deepEqual(h.errors, []);
+      assert.equal(h.clipboard.length, 1);
+      assert.equal(h.summaryTitle, "Repository and selected file context");
+      const excluded = scenario === "oversized" || scenario === "aggregate";
+      assert.equal(h.warnings.length, excluded ? 1 : 0);
+      assert.equal(h.infos.length, excluded ? 0 : 1);
+      if (excluded) assert.match(h.warnings[0], /excluded due to size limits/);
+      if (scenario === "oversized") assert.match(h.warnings[0], /No selected file contents were included/);
+      assert.ok(!h.summaryNote?.includes("No source files included"));
+      if (scenario === "eligible" || scenario === "unsaved") assert.match(h.summaryNote!, /1 selected source file/);
+      if (scenario === "binary") assert.match(h.summaryNote!, /No selected file contents included · 1 binary metadata/);
+      const copied = h.clipboard[0];
+      assert.ok(copied.startsWith(formatMockPrompt(h.clientCalls[0])));
+      assert.ok(h.clientCalls[0].request.includes('@"' + files[0] + '"'));
+      assert.ok(Buffer.byteLength(copied) <= MAX_COPY_PAYLOAD_BYTES);
+      if (scenario === "eligible") assert.match(copied, /File: src\/main.ts \(Full File\)[\s\S]*selected source/);
+      if (scenario === "unsaved") {
+        assert.match(copied, /unsaved edit/);
+        assert.deepEqual(reads, []);
+      }
+      if (scenario === "oversized") assert.ok(copied.includes(PER_FILE_EXCLUSION_REASON));
+      if (scenario === "binary") {
+        assert.match(copied, /File: src\/main.ts \(Binary File\)/);
+        assert.ok(!copied.includes("\0"));
+      }
+      if (scenario === "aggregate") {
+        assert.ok(copied.includes(TOTAL_PAYLOAD_EXCLUSION_REASON));
+        assert.match(copied, /three.ts \(contents would exceed/);
+      }
+    });
+  }
+
+  for (const kind of ["project", "folder"] as const) {
+    test(`${kind} Ask does not append selected file context`, async () => {
+      const h = createHarness({});
+      h.deps.addFileContext = async () => { throw new Error("must not load files"); };
+      await runAsk(kind === "project" ? { kind } : { kind, resourcePath: path.join(rootA, "src") }, h.deps);
+      assert.deepEqual(h.errors, []);
+      assert.equal(h.clipboard[0], formatMockPrompt(h.clientCalls[0]));
+      assert.equal(h.summaryTitle, undefined);
+      assert.equal(h.summaryNote, undefined);
+    });
+  }
+
+  test("deduplicates selected paths before allocating context budget", async () => {
+    const h = createHarness({});
+    const a = path.join(rootA, "a.ts");
+    const b = path.join(rootA, "b.ts");
+    h.deps.addFileContext = async (prompt, _root, selected) => {
+      assert.deepEqual(selected, [a, b]);
+      return { payload: prompt, includedCount: 2, sourceCount: 2, excludedCount: 0 };
+    };
+    await runAsk({ kind: "file", resourcePath: a, selectedResourcePaths: [a, b, a] }, h.deps);
+    assert.deepEqual(h.errors, []);
+    assert.equal(h.clipboard.length, 1);
+  });
+
+  test("read failures do not copy an incomplete prompt", async () => {
+    const h = createHarness({});
+    h.deps.addFileContext = async () => { throw new Error("Cannot read selected file"); };
+    await runAsk({ kind: "file", resourcePath: path.join(rootA, "main.ts") }, h.deps);
+    assert.deepEqual(h.clipboard, []);
+    assert.deepEqual(h.errors, ["Cannot read selected file"]);
   });
 });

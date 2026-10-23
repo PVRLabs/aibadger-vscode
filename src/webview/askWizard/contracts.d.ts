@@ -68,6 +68,8 @@ declare namespace AskWizardContract {
         payloadSize?: string;
         handoffInstruction?: string;
         summaryLines?: readonly string[];
+        summaryTitle?: string;
+        summaryNote?: string;
         badgerVersion?: string;
       }
     | { type: "showStep1"; goal?: string }

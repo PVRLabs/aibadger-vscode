@@ -21,7 +21,7 @@ function createHarness(overrides: Partial<AskWizardControllerOptions> = {}) {
     chatProviders: [{ id: "chatgpt", name: "ChatGPT" }],
     onPreparePrompt: async (goal, action) => {
       prepared.push({ goal, openProviderId: action?.openProviderId });
-      return { ok: true, summaryLines: ["Go · 3 files"] };
+      return { ok: true, summaryLines: ["Go · 3 files"], summaryTitle: "Repository and selected file context", summaryNote: "1 selected source file included" };
     },
     validateSelectors: () => undefined,
     onCopyRequestedFiles: async (goal, selectors) => {
@@ -57,6 +57,8 @@ suite("AskWizardController", () => {
         type: "showStep2",
         handoffInstruction: handoffInstructionAfterOpen("ChatGPT"),
         summaryLines: ["Go · 3 files"],
+        summaryTitle: "Repository and selected file context",
+        summaryNote: "1 selected source file included",
       },
       { type: "busy", busy: false, step: 1 },
     ]);

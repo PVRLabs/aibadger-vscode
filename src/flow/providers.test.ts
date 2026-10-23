@@ -94,14 +94,13 @@ suite("chat providers (Prompt 1 handoff only)", () => {
 
   test("step 2 is one short instruction (no numbered list)", () => {
     assert.strictEqual(HANDOFF_HEADLINE, "Prompt copied to clipboard.");
-    assert.ok(HANDOFF_INSTRUCTION.includes("Paste it into an AI chat"));
-    assert.ok(HANDOFF_INSTRUCTION.includes("paste the AI"));
+    assert.equal(HANDOFF_INSTRUCTION, "Paste the prompt into an AI chat. If the AI needs additional files, paste its FILE:, PREFIX:, or NEAR: requests below.");
     assert.ok(HANDOFF_MESSAGE.startsWith(HANDOFF_HEADLINE));
     assert.strictEqual(
       handoffInstructionAfterOpen("ChatGPT"),
-      "Paste it into the opened ChatGPT window, then paste the AI’s response below. The AI will ask for specific files to fully answer your question."
+      "Paste the prompt into the opened ChatGPT window. If the AI needs additional files, paste its FILE:, PREFIX:, or NEAR: requests below."
     );
-    assert.ok(HANDOFF_INSTRUCTION.includes("ask for specific files"));
+    assert.ok(HANDOFF_INSTRUCTION.includes("If the AI needs additional files"));
     assert.ok(!handoffInstructionAfterOpen("Claude").includes("Open an AI chat"));
     assert.ok(
       handoffMessageAfterOpen("Grok").startsWith("Prompt copied to clipboard.")

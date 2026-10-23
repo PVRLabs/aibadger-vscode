@@ -498,6 +498,8 @@ window.addEventListener("message", (event) => {
     setExecutableStatus(!!msg.unavailable, !!msg.busy);
   }
   if (msg.type === "showStep2") {
+    promptSummaryTitle.textContent = msg.summaryTitle ?? config.prompt1SummaryTitle;
+    promptSummaryNote.textContent = msg.summaryNote ?? config.prompt1SummaryNote;
     showStep2(msg.handoffInstruction, msg.summaryLines, msg.badgerVersion, msg.payloadSize);
   }
   if (msg.type === "showStep1") {

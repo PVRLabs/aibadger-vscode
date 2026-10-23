@@ -19,6 +19,9 @@ export function createVscodeRunAskUi(
     showInformationMessage: (message) => {
       void vscode.window.showInformationMessage(message);
     },
+    showWarningMessage: (message) => {
+      void vscode.window.showWarningMessage(message);
+    },
     showErrorMessage: (message) => {
       void vscode.window.showErrorMessage(message);
     },

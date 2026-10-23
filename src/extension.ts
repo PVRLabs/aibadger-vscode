@@ -1,4 +1,5 @@
 import * as vscode from "vscode";
+import * as path from "path";
 import {
   canStartBadgerExecutable,
   createBadgerCliClient,
@@ -17,6 +18,7 @@ import {
   COPY_FILE_FOR_AI_COMMAND,
   COPY_FILES_FOR_AI_COMMAND,
   copyFilesForAI,
+  buildSelectedFileContext,
   type CopyFilesDeps,
 } from "./context/copyFilesForAI";
 import { runAsk } from "./flow/runAsk";
@@ -76,8 +78,20 @@ export function activate(
   reviewClient?: BadgerReviewClient
 ): void {
   const runtime = client ? undefined : createDefaultBadgerRuntime();
+  const copyFilesDeps = createVscodeCopyFilesDeps();
   const deps = {
     scope: createVscodeResolveDeps(),
+    addFileContext: async (prompt: string, projectRoot: string, paths: readonly string[]) => {
+      const context = await buildSelectedFileContext(
+        paths.map((filePath) => ({
+          uri: vscode.Uri.file(filePath),
+          relativePath: path.relative(projectRoot, filePath).replaceAll("\\", "/"),
+        })),
+        copyFilesDeps,
+        `${prompt}\n\n`
+      );
+      return context;
+    },
     ui: createVscodeRunAskUi(context.extensionUri, context),
     client: client ?? runtime!.client,
     reviewClient:
@@ -92,7 +106,6 @@ export function activate(
         }
       : {}),
   };
-  const copyFilesDeps = createVscodeCopyFilesDeps();
   const reviewSelectionDeps = createReviewSelectedChangesSelectionDeps(vscode);
   const copySelectedFiles = async (
     uri?: vscode.Uri,

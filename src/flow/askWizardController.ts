@@ -13,7 +13,14 @@ export type PreparePromptAction = {
 };
 
 export type PreparePromptResult =
-  | { ok: true; summaryLines?: readonly string[]; payloadSize?: string; badgerVersion?: string }
+  | {
+      ok: true;
+      summaryLines?: readonly string[];
+      summaryTitle?: string;
+      summaryNote?: string;
+      payloadSize?: string;
+      badgerVersion?: string;
+    }
   | { ok: false; message: string };
 
 export type CopyRequestedFilesResult =
@@ -172,6 +179,8 @@ export function createAskWizardController(
                 }
               : {}),
             ...(summaryLines ? { summaryLines } : {}),
+            ...(prepareResult.summaryTitle ? { summaryTitle: prepareResult.summaryTitle } : {}),
+            ...(prepareResult.summaryNote ? { summaryNote: prepareResult.summaryNote } : {}),
             ...(prepareResult.badgerVersion
               ? { badgerVersion: prepareResult.badgerVersion }
               : {}),

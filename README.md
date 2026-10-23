@@ -70,6 +70,8 @@ Use these commands to start the smart-context workflow for a specific scope. The
 * **AI Badger: Ask About File…** — Ask a question about one selected file, with relevant repository context available when needed.
 * **AI Badger: Ask About Selected Files…** — Start from multiple files selected in the Explorer.
 
+File Ask prompts include selected source contents, including unsaved editor changes. Text files up to 500 KiB each fit within a 1 MiB copied prompt limit; binary files use metadata, and size exclusions are listed in the prompt.
+
 The project command is available from the Explorer toolbar. File and folder commands are available from Explorer and editor context menus where applicable. You can also find most commands in the Command Palette.
 
 ### Copy selected changes for review

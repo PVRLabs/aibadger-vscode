@@ -1,7 +1,7 @@
 /**
  * Compact Prompt 1 topology / payload summary for Step 2.
  *
- * Derives only from the Prompt 1 text already returned by `api prompt`
+ * Derives topology and payload size from the composed Prompt 1 text
  * (plus optional project root / scope from the extension request). Never
  * re-scans the workspace and never includes file contents.
  */
@@ -110,7 +110,8 @@ export function summarizePrompt1(
 
 /**
  * Format a summary model into short display lines for the webview.
- * Does not include the section title/note ("Topology only" / "No source…").
+ * Section title/note come from the Ask flow, using actual context inclusion
+ * counts for file Ask and topology-only defaults for project/folder Ask.
  * Never includes full prompt body or source contents.
  *
  * Scale uses package counts from the topology tree only — not "files included."

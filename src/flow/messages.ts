@@ -157,7 +157,7 @@ export const HANDOFF_HEADLINE = "Prompt copied to clipboard.";
  * Default Step 2 instruction (copy-only path). One line; demo tip is optional.
  */
 export const HANDOFF_INSTRUCTION =
-  "Paste it into an AI chat, then paste the AI’s response below. The AI will ask for specific files to fully answer your question.";
+  "Paste the prompt into an AI chat. If the AI needs additional files, paste its FILE:, PREFIX:, or NEAR: requests below.";
 
 /**
  * Combined default handoff (headline + instruction) for tests / legacy call sites.
@@ -168,7 +168,7 @@ export const HANDOFF_MESSAGE = `${HANDOFF_HEADLINE} ${HANDOFF_INSTRUCTION}`;
  * Step 2 instruction after “Copy and Open &lt;provider&gt;”: chat is already open.
  */
 export function handoffInstructionAfterOpen(providerName: string): string {
-  return `Paste it into the opened ${providerName} window, then paste the AI’s response below. The AI will ask for specific files to fully answer your question.`;
+  return `Paste the prompt into the opened ${providerName} window. If the AI needs additional files, paste its FILE:, PREFIX:, or NEAR: requests below.`;
 }
 
 /**

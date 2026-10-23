@@ -1,3 +1,5 @@
+import * as path from "path";
+import type { buildSelectedFileContext } from "../context/copyFilesForAI";
 import { formatPayloadSize } from "../shared/formatPayloadSize";
 import type { BadgerClient, PromptRequest } from "../client/types";
 import {
@@ -68,6 +70,7 @@ export type RunAskUi = {
   ) => Promise<AskWizardResult | undefined>;
   writeClipboard: (text: string) => Promise<void>;
   showInformationMessage: (message: string) => void;
+  showWarningMessage: (message: string) => void;
   showErrorMessage: (message: string) => void;
   /**
    * Open an approved public URL in the system browser.
@@ -84,6 +87,8 @@ export type RunAskDeps = {
   scope: ResolveScopeDeps;
   ui: RunAskUi;
   client: BadgerClient;
+  /** Append selected source using the direct-copy inclusion policy. */
+  addFileContext?: (prompt: string, projectRoot: string, paths: readonly string[]) => ReturnType<typeof buildSelectedFileContext>;
   /** Optional production-only executable preflight and recovery UI bridge. */
   executableRecovery?: {
     isExecutableAvailable: () => Promise<boolean>;
@@ -155,9 +160,38 @@ export async function runAsk(entry: AskEntry, deps: RunAskDeps): Promise<void> {
           return { ok: false, message: badgerCliFailureMessage(result.message) };
         }
 
-        // Clipboard first — never attach prompt text to an open URL.
-        await deps.ui.writeClipboard(result.prompt);
+        let prompt = result.prompt;
+        let fileContext: Awaited<ReturnType<typeof buildSelectedFileContext>> | undefined;
+        if (entry.kind === "file" && deps.addFileContext) {
+          try {
+            fileContext = await deps.addFileContext(
+              prompt,
+              target.projectRoot,
+              target.taggedFilePaths?.map((file) => path.join(target.projectRoot, file))
+                ?? [entry.resourcePath!]
+            );
+            prompt = fileContext.payload;
+          } catch (error) {
+            return {
+              ok: false,
+              message: error instanceof Error ? error.message : "Could not read selected file context.",
+            };
+          }
+        }
 
+        // Clipboard first — never attach prompt text to an open URL.
+        await deps.ui.writeClipboard(prompt);
+
+        const notify = (message: string): void => {
+          if (fileContext && fileContext.excludedCount > 0) {
+            const contents = fileContext.sourceCount === 0
+              ? "No selected file contents were included."
+              : `Contents of ${fileContext.sourceCount} selected file(s) included.`;
+            deps.ui.showWarningMessage(`${message} ${contents} ${fileContext.excludedCount} selected file(s) excluded due to size limits. See exclusion details in the copied prompt.`);
+          } else {
+            deps.ui.showInformationMessage(message);
+          }
+        };
         const openId = action?.openProviderId;
         if (openId) {
           const provider = providerById(openId);
@@ -167,26 +201,26 @@ export async function runAsk(entry: AskEntry, deps: RunAskDeps): Promise<void> {
           const opened = await deps.ui.openExternal(provider.url);
           if (opened) {
             deps.ui.setLastChatProviderId(provider.id);
-            deps.ui.showInformationMessage(
-              promptCopiedOpenedMessage(provider.name, Buffer.byteLength(result.prompt, "utf8"))
+            notify(
+              promptCopiedOpenedMessage(provider.name, Buffer.byteLength(prompt, "utf8"))
             );
           } else {
-            deps.ui.showInformationMessage(
-              promptCopiedOpenFailedMessage(provider.name, Buffer.byteLength(result.prompt, "utf8"))
+            notify(
+              promptCopiedOpenFailedMessage(provider.name, Buffer.byteLength(prompt, "utf8"))
             );
           }
         } else {
-          deps.ui.showInformationMessage(askPromptCopiedMessage(Buffer.byteLength(result.prompt, "utf8")));
+          notify(askPromptCopiedMessage(Buffer.byteLength(prompt, "utf8")));
         }
 
         // Replace prior flow state when the user starts again.
         if (flow) {
           clearActiveAskFlowState(flow);
         }
-        flow = createActiveAskFlowState(request, result.prompt);
+        flow = createActiveAskFlowState(request, prompt);
 
         // Compact orientation for Step 2 — fail soft if derivation yields nothing.
-        const summary = summarizePrompt1(result.prompt, {
+        const summary = summarizePrompt1(prompt, {
           projectRoot: request.projectRoot,
           scope: request.scope,
         });
@@ -196,7 +230,11 @@ export async function runAsk(entry: AskEntry, deps: RunAskDeps): Promise<void> {
 
         return {
           ok: true,
-          payloadSize: formatPayloadSize(Buffer.byteLength(result.prompt, "utf8")),
+          payloadSize: formatPayloadSize(Buffer.byteLength(prompt, "utf8")),
+          ...(fileContext ? {
+            summaryTitle: "Repository and selected file context",
+            summaryNote: `${fileContext.sourceCount === 0 ? "No selected file contents included" : `${fileContext.sourceCount} selected source file(s) included`} · ${fileContext.includedCount - fileContext.sourceCount} binary metadata block(s) · ${fileContext.excludedCount} file(s) excluded due to size limits`,
+          } : {}),
           ...(result.badgerVersion
             ? { badgerVersion: result.badgerVersion }
             : {}),

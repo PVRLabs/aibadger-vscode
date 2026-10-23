@@ -119,16 +119,18 @@ type IndexedExcludedFile = ExcludedContextFile & { index: number };
 
 function fitPayload(
   files: readonly IndexedContextFile[],
-  excludedFiles: readonly IndexedExcludedFile[]
+  excludedFiles: readonly IndexedExcludedFile[],
+  prefix = ""
 ): {
   payload: string;
   includedCount: number;
+  sourceCount: number;
   excludedCount: number;
 } {
   const included = [...files];
   const excluded = [...excludedFiles];
   let orderedExcluded = [...excluded].sort((a, b) => a.index - b.index);
-  let payload = formatAdditionalContext(undefined, included, orderedExcluded);
+  let payload = prefix + formatAdditionalContext(undefined, included, orderedExcluded);
 
   while (Buffer.byteLength(payload, "utf8") > MAX_COPY_PAYLOAD_BYTES) {
     const removed = included.pop();
@@ -141,12 +143,13 @@ function fitPayload(
       reason: TOTAL_PAYLOAD_EXCLUSION_REASON,
     });
     orderedExcluded = [...excluded].sort((a, b) => a.index - b.index);
-    payload = formatAdditionalContext(undefined, included, orderedExcluded);
+    payload = prefix + formatAdditionalContext(undefined, included, orderedExcluded);
   }
 
   return {
     payload,
     includedCount: included.length,
+    sourceCount: included.filter((file) => "contents" in file).length,
     excludedCount: orderedExcluded.length,
   };
 }
@@ -207,60 +210,7 @@ export async function copyFilesForAI(
       validated.sort((a, b) => a.relativePath.localeCompare(b.relativePath));
     }
 
-    const loaded = await Promise.all(
-      validated.map(async ({ uri, relativePath }, index) => {
-        const openText = deps.getOpenDocumentText(uri);
-        if (openText !== undefined) {
-          const size = Buffer.byteLength(openText, "utf8");
-          if (openText.includes("\0")) {
-            return binaryFile(index, relativePath, size);
-          }
-          if (size > MAX_COPY_FILE_BYTES) {
-            return {
-              kind: "excluded" as const,
-              index,
-              path: relativePath,
-              reason: PER_FILE_EXCLUSION_REASON,
-            };
-          }
-          return {
-            kind: "included" as const,
-            index,
-            path: relativePath,
-            contents: openText,
-          };
-        }
-
-        const bytes = await deps.readFile(uri);
-        const contents = decodeUtf8(bytes);
-        if (contents === undefined) {
-          return binaryFile(index, relativePath, bytes.byteLength);
-        }
-        if (bytes.byteLength > MAX_COPY_FILE_BYTES) {
-          return {
-            kind: "excluded" as const,
-            index,
-            path: relativePath,
-            reason: PER_FILE_EXCLUSION_REASON,
-          };
-        }
-        return {
-          kind: "included" as const,
-          index,
-          path: relativePath,
-          contents,
-        };
-      })
-    );
-    const files = loaded.filter(
-      (file): file is Extract<typeof file, { kind: "included" }> =>
-        file.kind === "included"
-    );
-    const excludedFiles = loaded.filter(
-      (file): file is Extract<typeof file, { kind: "excluded" }> =>
-        file.kind === "excluded"
-    );
-    const initial = fitPayload(files, excludedFiles);
+    const initial = await buildSelectedFileContext(validated, deps);
 
     await deps.writeClipboard(initial.payload);
     const message = copyResultMessage(
@@ -278,4 +228,67 @@ export async function copyFilesForAI(
       error instanceof Error ? error.message : UNSUPPORTED_SELECTION_MESSAGE
     );
   }
+}
+
+/** Shared direct-copy formatting, editor snapshots, and payload limits. */
+export async function buildSelectedFileContext(
+  validated: readonly { uri: CopyUri; relativePath: string }[],
+  deps: Pick<CopyFilesDeps, "getOpenDocumentText" | "readFile">,
+  prefix = ""
+): Promise<{ payload: string; includedCount: number; sourceCount: number; excludedCount: number }> {
+  const loaded = await Promise.all(
+    validated.map(async ({ uri, relativePath }, index) => {
+      const openText = deps.getOpenDocumentText(uri);
+      if (openText !== undefined) {
+        const size = Buffer.byteLength(openText, "utf8");
+        if (openText.includes("\0")) {
+          return binaryFile(index, relativePath, size);
+        }
+        if (size > MAX_COPY_FILE_BYTES) {
+          return {
+            kind: "excluded" as const,
+            index,
+            path: relativePath,
+            reason: PER_FILE_EXCLUSION_REASON,
+          };
+        }
+        return {
+          kind: "included" as const,
+          index,
+          path: relativePath,
+          contents: openText,
+        };
+      }
+
+      const bytes = await deps.readFile(uri);
+      const contents = decodeUtf8(bytes);
+      if (contents === undefined) {
+        return binaryFile(index, relativePath, bytes.byteLength);
+      }
+      if (bytes.byteLength > MAX_COPY_FILE_BYTES) {
+        return {
+          kind: "excluded" as const,
+          index,
+          path: relativePath,
+          reason: PER_FILE_EXCLUSION_REASON,
+        };
+      }
+      return {
+        kind: "included" as const,
+        index,
+        path: relativePath,
+        contents,
+      };
+    })
+  );
+  const files = loaded.filter(
+    (file): file is Extract<typeof file, { kind: "included" }> =>
+      file.kind === "included"
+  );
+  const excludedFiles = loaded.filter(
+    (file): file is Extract<typeof file, { kind: "excluded" }> =>
+      file.kind === "excluded"
+  );
+  return fitPayload(files, excludedFiles, prefix);
+
 }

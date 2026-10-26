@@ -1,3 +1,5 @@
+import * as path from "node:path";
+
 /** VS Code setting: optional absolute path or command name for the Badger CLI. */
 export const EXECUTABLE_PATH_SETTING = "aiBadger.executablePath";
 
@@ -26,4 +28,23 @@ export function resolveBadgerExecutable(
     return fromSetting;
   }
   return DEFAULT_EXECUTABLE;
+}
+
+/** Probe lazily when a command needs the CLI; explicit choices never fall back. */
+export async function resolveAvailableBadgerExecutable(
+  canStart: (executable: string) => Promise<boolean>,
+  getConfigValue: (key: string) => string | undefined = () => undefined,
+  env: NodeJS.ProcessEnv = process.env,
+  platform: NodeJS.Platform = process.platform
+): Promise<string> {
+  const executable = resolveBadgerExecutable(getConfigValue, env);
+  const explicit = env[EXECUTABLE_ENV]?.trim() || getConfigValue(EXECUTABLE_PATH_SETTING)?.trim();
+  if (explicit || platform !== "win32" || !env.LOCALAPPDATA) {
+    return executable;
+  }
+  if (await canStart(executable)) {
+    return executable;
+  }
+  const installed = path.win32.join(env.LOCALAPPDATA, "Programs", "Badger", "badger.exe");
+  return await canStart(installed) ? installed : executable;
 }

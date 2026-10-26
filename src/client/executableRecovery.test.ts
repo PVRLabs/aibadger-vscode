@@ -46,11 +46,11 @@ suite("executable recovery client", () => {
     assert.deepStrictEqual(created, ["/opt/badger-a", "/opt/badger-b"]);
   });
 
-  test("retries the original request with the chosen executable", async () => {
+  test("awaits executable discovery and retries the original request with the chosen executable", async () => {
     const calls: string[] = [];
     let recoveryCalls = 0;
     const client = createExecutableRecoveringClient({
-      createClient(executable) {
+      async createClient(executable) {
         if (!executable) {
           return unavailableClient(calls);
         }

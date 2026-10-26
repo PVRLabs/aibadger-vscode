@@ -13,6 +13,7 @@ import {
 import {
   EXECUTABLE_PATH_SETTING,
   resolveBadgerExecutable,
+  resolveAvailableBadgerExecutable,
 } from "./client/resolveExecutable";
 import type { BadgerClient, BadgerReviewClient } from "./client/types";
 import {
@@ -421,10 +422,18 @@ function createDefaultBadgerRuntime(): DefaultBadgerRuntime {
     return executable;
   };
 
-  const createClient = createExecutableClientCache(
+  const cachedClient = createExecutableClientCache(
     currentExecutable,
     (executable) => createBadgerCliClient({ executable })
   );
+
+  const resolveCurrentExecutable = () => chosenExecutable
+    ? Promise.resolve(chosenExecutable)
+    : resolveAvailableBadgerExecutable(canStartBadgerExecutable, (key) =>
+      vscode.workspace.getConfiguration().get<string>(key)
+    );
+  const createClient = async (executable?: string) =>
+    cachedClient(executable ?? await resolveCurrentExecutable());
 
   const client = createExecutableRecoveringClient({
     createClient,
@@ -440,8 +449,8 @@ function createDefaultBadgerRuntime(): DefaultBadgerRuntime {
   return {
     client,
     reviewClient,
-    isExecutableAvailable: () =>
-      canStartBadgerExecutable(currentExecutable()),
+    isExecutableAvailable: async () =>
+      canStartBadgerExecutable(await resolveCurrentExecutable()),
     openRecovery: async () => {
       const executable = await recoverAndRemember();
       return executable

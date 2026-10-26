@@ -11,7 +11,7 @@ import type {
 
 export type ExecutableRecoveryOptions = {
   /** Build a client for the current configuration or an explicitly chosen path. */
-  createClient: (executable?: string) => BadgerClient;
+  createClient: (executable?: string) => BadgerClient | Promise<BadgerClient>;
   /**
    * Explain the missing local prerequisite and offer recovery actions.
    * Return a chosen executable path to retry, or undefined for every other action.
@@ -27,7 +27,7 @@ export type ExecutableRecoveryOptions = {
 type RecoverableResult = GeneratePromptResult | ExtractPromptResult;
 
 type RecoveryOptions<TClient> = {
-  createClient: (executable?: string) => TClient;
+  createClient: (executable?: string) => TClient | Promise<TClient>;
   recoverExecutable: () => Promise<string | undefined>;
   recoverUnsupportedApi?: () => Promise<string | undefined>;
 };
@@ -38,7 +38,7 @@ function createRecoveryRunner<TClient>(options: RecoveryOptions<TClient>) {
   return async function recover<T extends RecoverableResult>(
     run: (client: TClient) => Promise<T>
   ): Promise<T> {
-    const result = await run(options.createClient(chosenExecutable));
+    const result = await run(await options.createClient(chosenExecutable));
     if (result.ok) {
       return result;
     }
@@ -59,7 +59,7 @@ function createRecoveryRunner<TClient>(options: RecoveryOptions<TClient>) {
     }
 
     chosenExecutable = executable;
-    return run(options.createClient(executable));
+    return run(await options.createClient(executable));
   };
 }
 
@@ -103,7 +103,7 @@ export function createExecutableRecoveringClient(
 }
 
 export type ReviewExecutableRecoveryOptions = {
-  createClient: (executable?: string) => BadgerReviewClient;
+  createClient: (executable?: string) => BadgerReviewClient | Promise<BadgerReviewClient>;
   recoverExecutable: () => Promise<string | undefined>;
   recoverUnsupportedApi?: () => Promise<string | undefined>;
 };

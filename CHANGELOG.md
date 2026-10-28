@@ -4,6 +4,11 @@ All notable changes to the AI Badger VS Code extension are documented here.
 
 ## [Unreleased]
 
+- Fixed ChatGPT responses containing multiple space-separated `FILE:` references
+  being treated as one selector. Ask and Deep Review now normalize these into
+  separate lines while preserving spaces in paths, Markdown escapes, and
+  backslashes for Badger to resolve.
+
 - Added macOS Explorer actions to copy one or more images (PNG, JPEG, WebP,
   GIF) or attachments (PDF, ZIP, DOCX, PPTX, XLSX) for pasting into AI chats.
   Each action copies supported files in its category and warns about skipped

@@ -7,6 +7,7 @@ import {
 } from "../context/copyFilesForAI";
 import * as assert from "assert";
 import * as path from "path";
+import { readFileSync } from "node:fs";
 import type {
   BadgerClient,
   ExtractRequest,
@@ -617,6 +618,21 @@ suite("runAsk step 2 copy-requested-files + done panel", () => {
       askPromptCopiedMessage(Buffer.byteLength(h.clipboard[0], "utf8")),
       requestedCodeCopiedMessage(Buffer.byteLength(h.clipboard[1], "utf8")),
     ]);
+  });
+
+  test("forwards ChatGPT references to Ask without altering path text", async () => {
+    for (const name of ["lines", "inline"]) {
+      const input = readFileSync(path.join(__dirname, "../../test/fixtures", `chatgpt-${name}.txt`), "utf8");
+      const h = createHarness({});
+      h.setWizard({ goal: "Explain the scanner.", aiResponse: input });
+      await runAsk({ kind: "project" }, h.deps);
+      assert.strictEqual(h.extractCalls.length, 1);
+      assert.strictEqual(
+        h.extractCalls[0].selectors.replace(/\n/g, " "),
+        input.trim().replace(/\r?\n/g, " ")
+      );
+      assert.strictEqual(h.clipboard.length, 2);
+    }
   });
 
   test("extract failure surfaces error and does not write Prompt 2", async () => {

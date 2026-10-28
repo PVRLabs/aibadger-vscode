@@ -118,11 +118,17 @@ namespace BadgerSelectorPrimitives {
       if (raw === "") {
         continue;
       }
-      const parsed = parseSelectorLine(raw, line);
-      if (!parsed.ok) {
-        return parsed;
+      // ChatGPT may put several FILE references on one line. Only a repeated
+      // marker after whitespace is a boundary; spaces inside paths and FILE:
+      // text inside PREFIX/NEAR literals must remain untouched.
+      const parts = /^FILE:/i.test(raw) ? raw.split(/\s+(?=FILE:)/i) : [raw];
+      for (const part of parts) {
+        const parsed = parseSelectorLine(part, line);
+        if (!parsed.ok) {
+          return parsed;
+        }
+        selectors.push(parsed.selector);
       }
-      selectors.push(parsed.selector);
     }
 
     if (selectors.length === 0) {

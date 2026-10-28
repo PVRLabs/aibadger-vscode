@@ -27,6 +27,8 @@ import {
   resolveBadgerExecutable,
 } from "./resolveExecutable";
 import type { ExtractRequest, PromptRequest } from "./types";
+import { validateSelectors } from "../flow/selectors";
+import { continueDeepReview } from "../context/deepReview";
 
 const STUB_EXECUTABLE = "badger";
 
@@ -1039,6 +1041,40 @@ suite("createBadgerCliClient Deep Review operations", () => {
     assert.ok(args.includes("16384"));
     assert.deepStrictEqual(await fs.readdir(tmpDir), []);
     await fs.rmdir(tmpDir);
+  });
+
+  test("passes ChatGPT FILE fixtures as separate lines in the Deep Review input file", async () => {
+    for (const [name, count] of [["lines", 10], ["inline", 16]] as const) {
+      const input = await fs.readFile(path.join(__dirname, "../../test/fixtures", `chatgpt-${name}.txt`), "utf8");
+      const validation = validateSelectors(input);
+      assert.ok(validation.ok);
+      if (!validation.ok) { return; }
+      let payload: string | undefined;
+      let inputPath = "";
+      const client = createBadgerCliClient({
+        executable: STUB_EXECUTABLE,
+        runProcess: async (_exe, args) => {
+          if (args[0] === "--version") {
+            return { exitCode: 0, stdout: "badger v0.2.8\n", stderr: "" };
+          }
+          assert.deepStrictEqual(args.slice(0, 2), ["api", "review-continuation"]);
+          inputPath = args[args.indexOf("--input") + 1];
+          payload = await fs.readFile(inputPath, "utf8");
+          return { exitCode: 0, stdout: "supplemental", stderr: "" };
+        },
+      });
+      const result = await continueDeepReview(validation.text, {
+        client,
+        repositoryRoot: "/repo",
+        writeClipboard: async () => {},
+        showInformationMessage: () => {},
+      });
+      assert.notStrictEqual(typeof result, "string");
+      assert.strictEqual(payload, validation.text);
+      assert.strictEqual(payload!.split("\n").length, count);
+      assert.strictEqual(payload!.replace(/\n/g, " "), input.trim().replace(/\r?\n/g, " "));
+      await assert.rejects(() => fs.access(inputPath), /ENOENT/);
+    }
   });
 
   test("maps nonzero review failure without leaking content-bearing inputs", async () => {

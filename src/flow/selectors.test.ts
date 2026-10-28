@@ -1,7 +1,56 @@
 import * as assert from "assert";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { validateSelectors } from "./selectors";
 
 suite("validateSelectors", () => {
+  for (const [name, count] of [["lines", 10], ["inline", 16]] as const) {
+    test(`preserves the exact ChatGPT ${name} fixture paths as ${count} selectors`, () => {
+      const input = readFileSync(join(__dirname, "../../test/fixtures", `chatgpt-${name}.txt`), "utf8");
+      for (const text of [input, input.replace(/\r?\n/g, "\r\n")]) {
+        const result = validateSelectors(text);
+        assert.ok(result.ok);
+        if (!result.ok) { return; }
+        assert.strictEqual(result.selectors.length, count);
+        assert.strictEqual(result.text.split("\n").length, count);
+        assert.strictEqual(result.text.replace(/\n/g, " "), input.trim().replace(/\r?\n/g, " "));
+        assert.deepStrictEqual(result.selectors.map(s => `FILE:${s.path}`), result.text.split("\n"));
+        if (name === "inline") {
+          assert.strictEqual(result.selectors[8].path, String.raw`internal/diagnose/command\_windows\_test.go`);
+        } else {
+          assert.strictEqual(result.selectors[0].path, "cmd/badger/main.go\\");
+        }
+      }
+    });
+  }
+
+  test("splits FILE markers without rewriting spaces, escapes, or separators", () => {
+    const result = validateSelectors(String.raw`FILE:docs/my file.md FILE:src\main\_test.go` + "\\\r\nFILE:other.go");
+    assert.ok(result.ok);
+    if (!result.ok) { return; }
+    assert.deepStrictEqual(result.selectors.map(s => s.path), ["docs/my file.md", String.raw`src\main\_test.go` + "\\", "other.go"]);
+    assert.deepStrictEqual(result.selectors.map(s => s.line), [1, 1, 2]);
+  });
+
+  test("leaves FILE text inside patterns and path components unchanged", () => {
+    const input = "PREFIX:a.go#literal FILE:b.go FILE:c.go\nNEAR:b.go#FILE:x FILE:y\nFILE:docs/FILE:notes.md";
+    const result = validateSelectors(input);
+    assert.ok(result.ok);
+    if (!result.ok) { return; }
+    assert.strictEqual(result.selectors.length, 3);
+    assert.strictEqual(result.text, input);
+  });
+
+  test("reports empty inline references on their original input line", () => {
+    for (const input of ["FILE:a.go FILE:", "FILE: FILE:b.go"]) {
+      const result = validateSelectors("FILE:ok.go\n" + input);
+      assert.ok(!result.ok);
+      if (result.ok) { return; }
+      assert.strictEqual(result.line, 2);
+      assert.ok(result.message.includes("missing path"));
+    }
+  });
+
   test("accepts all three forms and multiline input", () => {
     const input = [
       "FILE:README.md",

@@ -4,8 +4,6 @@
 
 Review Git changes and copy focused code context into ChatGPT, Claude, Gemini, Grok, or any other AI chat, directly from VS Code.
 
-**[Install from VS Code Marketplace](https://marketplace.visualstudio.com/items?itemName=pvrlabs.ai-badger)**
-
 Start with **Copy All Changes for Review** to prepare your Git changes for an AI review, or select files in the Explorer and use **Copy File for AI** or **Copy Selected Files for AI**. Paste the result into your preferred AI chat.
 
 **The Badger CLI is optional.** Direct Git review (selected, repository, or workspace changes) and direct file copying work with the extension alone. Install the CLI for complementary repository-aware workflows: **Deep Review** and guided **Ask About** commands.

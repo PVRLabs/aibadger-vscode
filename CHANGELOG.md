@@ -4,15 +4,34 @@ All notable changes to the AI Badger VS Code extension are documented here.
 
 ## [Unreleased]
 
+## [0.1.7] - 2026-10-28
+
+### Ask and file copying
+
+- File Ask prompts now include selected source contents, including unsaved
+  editor changes, with a 500 KiB per-file limit and a 1 MiB prompt limit.
+  Binary files use metadata, and size exclusions are listed in the prompt.
+- Fixed file-copy notifications to report how many files were actually copied
+  and warn when size limits exclude contents.
+
+### ChatGPT compatibility
+
 - Fixed ChatGPT responses containing multiple space-separated `FILE:` references
   being treated as one selector. Ask and Deep Review now normalize these into
   separate lines while preserving spaces in paths, Markdown escapes, and
   backslashes for Badger to resolve.
 
+### macOS attachments
+
 - Added macOS Explorer actions to copy one or more images (PNG, JPEG, WebP,
   GIF) or attachments (PDF, ZIP, DOCX, PPTX, XLSX) for pasting into AI chats.
   Each action copies supported files in its category and warns about skipped
   items. Existing formatted-text copying remains available.
+
+### Windows CLI discovery
+
+- Discover the default Windows Badger CLI installation when it is missing
+  from PATH, while respecting explicitly configured executable paths.
 
 ## [0.1.6] - 2026-10-22
 

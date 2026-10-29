@@ -149,6 +149,4 @@ npm ci
 npm run verify
 ```
 
-See the [release guide](https://github.com/PVRLabs/aibadger-vscode/blob/main/docs/releasing.md) for packaging and publishing details.
-
 AI Badger for VS Code is published by [PVR Labs](https://github.com/PVRLabs).

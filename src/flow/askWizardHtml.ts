@@ -8,6 +8,7 @@ export type AskWizardHtmlParams = {
   stylesheetUri: string;
   selectorScriptUri: string;
   scriptUri: string;
+  presetScriptUri: string;
   config: AskWizardContract.WebviewConfig;
 };
 
@@ -18,6 +19,7 @@ const PLACEHOLDER_KEYS = [
   "STYLESHEET_URI",
   "SELECTOR_SCRIPT_URI",
   "SCRIPT_URI",
+  "PRESET_SCRIPT_URI",
   "CONFIG_JSON",
 ] as const;
 
@@ -43,6 +45,7 @@ export function buildWizardHtml(params: AskWizardHtmlParams): string {
     STYLESHEET_URI: escapeHtml(params.stylesheetUri),
     SELECTOR_SCRIPT_URI: escapeHtml(params.selectorScriptUri),
     SCRIPT_URI: escapeHtml(params.scriptUri),
+    PRESET_SCRIPT_URI: escapeHtml(params.presetScriptUri),
     CONFIG_JSON: serializeJsonForHtml(params.config),
   });
 }

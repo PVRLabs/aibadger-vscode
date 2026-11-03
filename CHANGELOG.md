@@ -4,6 +4,11 @@ All notable changes to the AI Badger VS Code extension are documented here.
 
 ## [Unreleased]
 
+- Deep Review now offers a **Broader context** preset for changes whose effects
+  may extend across files. Select it to ask the AI to investigate relevant
+  unchanged code and request additional context that could reveal regressions.
+  The added guidance remains editable, and selecting **Standard** removes it.
+
 ## [0.1.7] - 2026-10-28
 
 ### Ask and file copying

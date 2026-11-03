@@ -201,6 +201,7 @@ export function showAskWizard(
       stylesheetUri,
       selectorScriptUri,
       scriptUri,
+      presetScriptUri: panel.webview.asWebviewUri(vscode.Uri.joinPath(webviewAssetRoot, "reviewPreset.js")).toString(),
       config: createWizardConfig(
         title,
         chatProviders,

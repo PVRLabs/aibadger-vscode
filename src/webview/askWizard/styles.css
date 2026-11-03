@@ -593,3 +593,8 @@ button.secondary:hover:not(:disabled) {
   .header, .summary, .guide, .guide-media, .demo-panel { border-color: var(--vscode-contrastBorder, CanvasText); }
   textarea:focus, button:focus-visible { outline-color: var(--vscode-focusBorder, Highlight); }
 }
+
+.guidance-heading { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; }
+.review-preset { display: flex; align-items: center; gap: 8px; }
+.review-preset.hidden { display: none; }
+.guidance-heading select { width: auto; color: var(--vscode-dropdown-foreground); background: var(--vscode-dropdown-background); border: 1px solid var(--vscode-dropdown-border); padding: 3px 6px; }

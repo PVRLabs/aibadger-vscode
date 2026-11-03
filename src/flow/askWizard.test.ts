@@ -41,6 +41,7 @@ suite("ask wizard webview html", () => {
       cspSource: "vscode-webview://test",
       stylesheetUri: "vscode-webview://test/styles.css",
       selectorScriptUri: "vscode-webview://test/selectorPrimitives.js",
+      presetScriptUri: "preset.js",
       scriptUri: "vscode-webview://test/main.js",
       config: {
         title: "{{CONFIG_JSON}}",
@@ -135,6 +136,7 @@ suite("ask wizard webview html", () => {
           CSP_SOURCE: "csp",
           STYLESHEET_URI: "style",
           SELECTOR_SCRIPT_URI: "selectors",
+          PRESET_SCRIPT_URI: "preset",
           SCRIPT_URI: "script",
           CONFIG_JSON: "{}",
         }),

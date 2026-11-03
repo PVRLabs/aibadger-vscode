@@ -23,7 +23,16 @@
       <span class="callout__message" id="executableWarningMessage"></span>
       <button type="button" class="callout__link" id="resolveBadger"></button>
     </div>
-    <p class="prompt-label" id="requestInputPrompt"></p>
+    <div class="guidance-heading">
+      <p class="prompt-label" id="requestInputPrompt"></p>
+      <div id="reviewPresetControl" class="review-preset hidden">
+        <label for="reviewPreset">Review depth</label>
+        <select id="reviewPreset">
+          <option value="standard">Standard</option>
+          <option value="broader">Broader context</option>
+        </select>
+      </div>
+    </div>
     <p class="hint" id="step1Hint"></p>
     <label class="sr" for="goal">Your request</label>
     <textarea
@@ -129,6 +138,7 @@
 
   <script type="application/json" id="askWizardConfig">{{CONFIG_JSON}}</script>
   <script src="{{SELECTOR_SCRIPT_URI}}"></script>
+  <script src="{{PRESET_SCRIPT_URI}}"></script>
   <script src="{{SCRIPT_URI}}"></script>
 </body>
 </html>

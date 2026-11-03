@@ -31,6 +31,11 @@ const executableWarningMessage =
   mustGetElement<HTMLSpanElement>("executableWarningMessage");
 const resolveBadger = mustGetElement<HTMLButtonElement>("resolveBadger");
 const goal = mustGetElement<HTMLTextAreaElement>("goal");
+const reviewPreset = mustGetElement<HTMLSelectElement>("reviewPreset");
+mustGetElement<HTMLDivElement>("reviewPresetControl").classList.toggle("hidden", !config.optionalSelectorContinuation);
+reviewPreset.addEventListener("change", () => {
+  goal.value = BadgerReviewPreset.apply(goal.value, reviewPreset.value === "broader");
+});
 const aiResponse = mustGetElement<HTMLTextAreaElement>("aiResponse");
 const requestInputPrompt = mustGetElement<HTMLParagraphElement>("requestInputPrompt");
 const step1Hint = mustGetElement<HTMLParagraphElement>("step1Hint");
@@ -283,6 +288,7 @@ function setStep1Busy(busy: boolean): void {
   }
   step1Cancel.disabled = busy;
   goal.disabled = busy;
+  reviewPreset.disabled = busy;
 }
 
 function setBusy(busy: boolean, step?: 1 | 2): void {
@@ -351,6 +357,7 @@ function showStep1(goalText: string | undefined): void {
   step2Error.textContent = "";
   if (typeof goalText === "string") {
     goal.value = goalText;
+    reviewPreset.value = goalText.includes("[AI Badger: Broader context]") ? "broader" : "standard";
   }
   aiResponse.value = "";
   setHandoffInstruction(undefined);

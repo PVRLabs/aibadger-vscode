@@ -219,6 +219,7 @@ function render(
 ): string {
   const repositoryContent = [
     `[REVIEW CONTEXT: SELECTED GIT DIFF]\n${literalFence("diff", diff)}`,
+    ...(untrackedPaths.size > 0 ? ["Selected untracked additions identified below are review targets, not supporting context."] : []),
     ...(additionalBlocks.length > 0 ? [`[ADDITIONAL CONTEXT]\n${additionalBlocks.join("\n\n")}`] : []),
     ...(blocks.length > 0 ? [`[CONTEXT]\n${blocks.join("\n\n")}`] : []),
     statusBlock(statuses, untrackedPaths),

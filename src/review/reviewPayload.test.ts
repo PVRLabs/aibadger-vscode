@@ -65,6 +65,93 @@ suite("buildReviewPayload", () => {
     assert.ok(result.payload.endsWith("[FILE CONTEXT STATUS]\n"));
   });
 
+  const untrackedScope = "Selected untracked additions identified below are review targets, not supporting context.";
+  const addition = { uri: uri("/repo/proposal.md"), relativePath: "docs/plans/proposal.md", changeKind: "untracked" as const };
+
+  for (const mixed of [false, true]) {
+    test(`clarifies ${mixed ? "mixed" : "untracked-only"} scope outside the diff fence`, async () => {
+      const diff = mixed ? "tracked patch\n" : "";
+      const files = mixed
+        ? [{ uri: uri("/repo/a.ts"), relativePath: "src/a.ts", changeKind: "modified" as const }, addition]
+        : [addition];
+      const result = await buildReviewPayload(diff, files, "repo", {
+        openFile: async () => fakeHandle(new TextEncoder().encode("# Proposal\n")),
+      });
+      assert.equal(result.ok, true);
+      if (!result.ok) return;
+      assert.equal(result.payload.split(untrackedScope).length - 1, 1);
+      assert.ok(result.payload.includes(`\`\`\`diff\n${diff || "\n"}\`\`\`\n\n${untrackedScope}\n\n[CONTEXT]`));
+      assert.ok(result.payload.startsWith(`[TASK]\n${REVIEW_TASK}\n`));
+      assert.ok(result.payload.includes("--- Untracked Working-Tree Addition: docs/plans/proposal.md (Complete File) ---"));
+      assert.ok(result.payload.endsWith("[FILE CONTEXT STATUS]\n"));
+      if (mixed) assert.ok(result.payload.includes("--- Current Working-Tree File: src/a.ts (Complete File) ---"));
+    });
+  }
+
+  test("leaves tracked-only and filtered-untracked payloads unchanged", async () => {
+    const tracked = [{ uri: uri("/repo/a.ts"), relativePath: "src/a.ts", changeKind: "modified" as const }];
+    const deps = { openFile: async () => fakeHandle(new TextEncoder().encode("content\n")) };
+    const baseline = await buildReviewPayload("patch", tracked, "repo", deps);
+    const filtered = await buildReviewPayload("patch", [...tracked, {
+      uri: uri("/repo/.env"), relativePath: ".env", changeKind: "untracked",
+    }], "repo", deps);
+    assert.equal(baseline.ok, true);
+    assert.equal(filtered.ok, true);
+    if (!baseline.ok || !filtered.ok) return;
+    assert.equal(baseline.payload.includes(untrackedScope), false);
+    assert.equal(filtered.payload, baseline.payload);
+    assert.equal(baseline.payload, `[TASK]\n${REVIEW_TASK}\n[REPOSITORY: repo]\n[REVIEW CONTEXT: SELECTED GIT DIFF]\n\`\`\`diff\npatch\n\`\`\`\n\n[CONTEXT]\n--- Current Working-Tree File: src/a.ts (Complete File) ---\n\`\`\`text\ncontent\n\`\`\`\n--- End File ---\n\n[FILE CONTEXT STATUS]\n`);
+  });
+
+  for (const omission of ["size", "budget", "unavailable"] as const) {
+    test(`clarifies path-only additions omitted for ${omission}`, async () => {
+      const result = await buildReviewPayload("", [addition], "repo", {
+        maxPayloadBytes: omission === "budget" ? 1000 : MAX_REVIEW_PAYLOAD_BYTES,
+        openFile: async () => {
+          if (omission === "unavailable") throw new Error("unavailable");
+          return fakeHandle(new TextEncoder().encode("x".repeat(omission === "size" ? MAX_REVIEW_FILE_BYTES + 1 : 2000)));
+        },
+      });
+      assert.equal(result.ok, true);
+      if (!result.ok) return;
+      assert.deepEqual(result.includedFiles, []);
+      const reason = omission === "size" ? "file exceeds 64 KiB full-file limit"
+        : omission === "budget" ? "total review-context budget reached" : "full file unavailable";
+      assert.ok(result.payload.includes(`${untrackedScope}\n\n[FILE CONTEXT STATUS]\n- docs/plans/proposal.md — path only: ${reason}`));
+      assert.ok(Buffer.byteLength(result.payload, "utf8") <= (omission === "budget" ? 1000 : MAX_REVIEW_PAYLOAD_BYTES));
+    });
+  }
+
+  test("counts the scope sentence in mandatory and optional payload boundaries", async () => {
+    const empty = await buildReviewPayload("", [], "repo");
+    assert.equal(empty.ok, true);
+    if (!empty.ok) return;
+    const mandatoryBytes = Buffer.byteLength(empty.payload, "utf8") + Buffer.byteLength(untrackedScope + "\n\n", "utf8");
+    let reads = 0;
+    const overflow = await buildReviewPayload("", [addition], "repo", {
+      maxPayloadBytes: mandatoryBytes - 1,
+      openFile: async () => { reads++; throw new Error("must not read"); },
+    });
+    assert.equal(reads, 0);
+    assert.deepEqual(overflow, { ok: false, reason: "mandatory-overflow", byteLength: mandatoryBytes });
+
+    const deps = { openFile: async () => fakeHandle(new TextEncoder().encode("é".repeat(200))) };
+    const complete = await buildReviewPayload("", [addition], "repo", deps);
+    assert.equal(complete.ok, true);
+    if (!complete.ok) return;
+    const exactBytes = Buffer.byteLength(complete.payload, "utf8");
+    const exact = await buildReviewPayload("", [addition], "repo", { ...deps, maxPayloadBytes: exactBytes });
+    assert.equal(exact.ok, true);
+    if (exact.ok) assert.equal(exact.payload, complete.payload);
+    const below = await buildReviewPayload("", [addition], "repo", { ...deps, maxPayloadBytes: exactBytes - 1 });
+    assert.equal(below.ok, true);
+    if (!below.ok) return;
+    assert.deepEqual(below.includedFiles, []);
+    assert.equal(below.statuses[0].reason, "total review-context budget reached");
+    assert.ok(below.payload.includes(untrackedScope));
+    assert.ok(Buffer.byteLength(below.payload, "utf8") <= exactBytes - 1);
+  });
+
   test("renders an explicitly supplied repository label after the task", async () => {
     const result = await buildReviewPayload("diff", [], "service");
     assert.equal(result.ok, true);

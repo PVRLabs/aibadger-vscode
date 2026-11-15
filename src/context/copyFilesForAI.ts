@@ -29,6 +29,10 @@ export const PER_FILE_EXCLUSION_REASON =
 export const TOTAL_PAYLOAD_EXCLUSION_REASON =
   "contents would exceed the 1 MiB total payload limit";
 
+function perFileExclusionReason(size: number, limit: number): string {
+  return `contents exceed the ${limit / 1024} KiB per-file limit; file size: ${size} bytes`;
+}
+
 export type CopyUri = SelectionUri;
 
 export type CopyWorkspaceFolder = {
@@ -49,6 +53,7 @@ export type CopyFilesDeps = {
   writeClipboard(text: string): Promise<void>;
   showInformationMessage(message: string): void;
   showWarningMessage(message: string): void;
+  offerHigherLimit?(message: string): Promise<boolean>;
   showErrorMessage(message: string): void;
 };
 
@@ -120,19 +125,21 @@ type IndexedExcludedFile = ExcludedContextFile & { index: number };
 function fitPayload(
   files: readonly IndexedContextFile[],
   excludedFiles: readonly IndexedExcludedFile[],
-  prefix = ""
+  prefix = "",
+  maxPayloadBytes = MAX_COPY_PAYLOAD_BYTES
 ): {
   payload: string;
   includedCount: number;
   sourceCount: number;
   excludedCount: number;
+  exclusions: readonly IndexedExcludedFile[];
 } {
   const included = [...files];
   const excluded = [...excludedFiles];
   let orderedExcluded = [...excluded].sort((a, b) => a.index - b.index);
   let payload = prefix + formatAdditionalContext(undefined, included, orderedExcluded);
 
-  while (Buffer.byteLength(payload, "utf8") > MAX_COPY_PAYLOAD_BYTES) {
+  while (Buffer.byteLength(payload, "utf8") > maxPayloadBytes) {
     const removed = included.pop();
     if (!removed) {
       throw new Error(OVERSIZED_SELECTION_MESSAGE);
@@ -140,7 +147,7 @@ function fitPayload(
     excluded.push({
       index: removed.index,
       path: removed.path,
-      reason: TOTAL_PAYLOAD_EXCLUSION_REASON,
+      reason: `contents would exceed the ${maxPayloadBytes / 1024 / 1024} MiB total payload limit; file size: ${"contents" in removed ? `${Buffer.byteLength(removed.contents, "utf8")} bytes` : removed.size}`,
     });
     orderedExcluded = [...excluded].sort((a, b) => a.index - b.index);
     payload = prefix + formatAdditionalContext(undefined, included, orderedExcluded);
@@ -151,13 +158,15 @@ function fitPayload(
     includedCount: included.length,
     sourceCount: included.filter((file) => "contents" in file).length,
     excludedCount: orderedExcluded.length,
+    exclusions: orderedExcluded,
   };
 }
 
 function copyResultMessage(
   selectedCount: number,
   excludedCount: number,
-  payloadBytes: number
+  payloadBytes: number,
+  exclusions: readonly IndexedExcludedFile[]
 ): string {
   if (excludedCount === 0) {
     return copySuccessMessage(selectedCount, payloadBytes);
@@ -167,7 +176,8 @@ function copyResultMessage(
   const result = includedCount === 0
     ? `No file contents copied. Exclusion details copied to the clipboard (${formatPayloadSize(payloadBytes)}).`
     : `Copied ${includedCount} of ${selectedCount} files to the clipboard (${formatPayloadSize(payloadBytes)}).`;
-  return `${result} ${excludedCount} ${noun} excluded due to size limits.`;
+  const details = exclusions.length === 1 ? ` ${exclusions[0].path}: ${exclusions[0].reason}.` : "";
+  return `${result} ${excludedCount} ${noun} excluded due to size limits.${details}`;
 }
 
 export async function copyFilesForAI(
@@ -216,10 +226,19 @@ export async function copyFilesForAI(
     const message = copyResultMessage(
       validated.length,
       initial.excludedCount,
-      Buffer.byteLength(initial.payload, "utf8")
+      Buffer.byteLength(initial.payload, "utf8"),
+      initial.exclusions
     );
     if (initial.excludedCount > 0) {
-      deps.showWarningMessage(message);
+      if (deps.offerHigherLimit) {
+        if (await deps.offerHigherLimit(message)) {
+          const retry = await buildSelectedFileContext(validated, deps, "", 2 * 1024 * 1024, 4 * 1024 * 1024);
+          await deps.writeClipboard(retry.payload);
+          const retryMessage = copyResultMessage(validated.length, retry.excludedCount, Buffer.byteLength(retry.payload, "utf8"), retry.exclusions);
+          if (retry.excludedCount > 0) deps.showWarningMessage(retryMessage);
+          else deps.showInformationMessage(retryMessage);
+        }
+      } else deps.showWarningMessage(message);
     } else {
       deps.showInformationMessage(message);
     }
@@ -234,8 +253,10 @@ export async function copyFilesForAI(
 export async function buildSelectedFileContext(
   validated: readonly { uri: CopyUri; relativePath: string }[],
   deps: Pick<CopyFilesDeps, "getOpenDocumentText" | "readFile">,
-  prefix = ""
-): Promise<{ payload: string; includedCount: number; sourceCount: number; excludedCount: number }> {
+  prefix = "",
+  maxFileBytes = MAX_COPY_FILE_BYTES,
+  maxPayloadBytes = MAX_COPY_PAYLOAD_BYTES
+): Promise<{ payload: string; includedCount: number; sourceCount: number; excludedCount: number; exclusions: readonly IndexedExcludedFile[] }> {
   const loaded = await Promise.all(
     validated.map(async ({ uri, relativePath }, index) => {
       const openText = deps.getOpenDocumentText(uri);
@@ -244,12 +265,12 @@ export async function buildSelectedFileContext(
         if (openText.includes("\0")) {
           return binaryFile(index, relativePath, size);
         }
-        if (size > MAX_COPY_FILE_BYTES) {
+        if (size > maxFileBytes) {
           return {
             kind: "excluded" as const,
             index,
             path: relativePath,
-            reason: PER_FILE_EXCLUSION_REASON,
+            reason: perFileExclusionReason(size, maxFileBytes),
           };
         }
         return {
@@ -265,12 +286,12 @@ export async function buildSelectedFileContext(
       if (contents === undefined) {
         return binaryFile(index, relativePath, bytes.byteLength);
       }
-      if (bytes.byteLength > MAX_COPY_FILE_BYTES) {
+      if (bytes.byteLength > maxFileBytes) {
         return {
           kind: "excluded" as const,
           index,
           path: relativePath,
-          reason: PER_FILE_EXCLUSION_REASON,
+          reason: perFileExclusionReason(bytes.byteLength, maxFileBytes),
         };
       }
       return {
@@ -289,6 +310,6 @@ export async function buildSelectedFileContext(
     (file): file is Extract<typeof file, { kind: "excluded" }> =>
       file.kind === "excluded"
   );
-  return fitPayload(files, excludedFiles, prefix);
+  return fitPayload(files, excludedFiles, prefix, maxPayloadBytes);
 
 }

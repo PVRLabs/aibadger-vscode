@@ -490,6 +490,8 @@ function createVscodeCopyFilesDeps(): CopyFilesDeps {
     readFile: async (uri) =>
       vscode.workspace.fs.readFile(uri as vscode.Uri),
     writeClipboard: async (text) => vscode.env.clipboard.writeText(text),
+    offerHigherLimit: async (message) =>
+      (await vscode.window.showWarningMessage(message, "Copy with higher limit (2 MiB per file, 4 MiB total)")) !== undefined,
     showWarningMessage: (message) => {
       void vscode.window.showWarningMessage(message);
     },

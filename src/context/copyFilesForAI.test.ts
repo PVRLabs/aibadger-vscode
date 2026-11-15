@@ -99,6 +99,19 @@ function createHarness(): Harness {
 }
 
 suite("copyFilesForAI", () => {
+  test("copies an oversized file when the higher limit is accepted", async () => {
+    const harness = createHarness();
+    const file = uri("large.txt");
+    const content = "x".repeat(1268676);
+    harness.setContents(file, content);
+    let warning = "";
+    harness.deps.offerHigherLimit = async (message) => { warning = message; return true; };
+    await copyFilesForAI(file, undefined, harness.deps);
+    assert.ok(warning.includes("file size: 1268676 bytes"));
+    assert.ok(warning.includes("500 KiB per-file limit"));
+    assert.ok(harness.clipboard.at(-1)!.includes(content));
+    assert.strictEqual(harness.infos.length, 1);
+  });
   test("uses a 500 KiB direct-copy per-file limit", () => {
     assert.strictEqual(MAX_COPY_FILE_BYTES, 500 * 1024);
     assert.ok(PER_FILE_EXCLUSION_REASON.includes("500 KiB"));
@@ -234,11 +247,11 @@ suite("copyFilesForAI", () => {
     assert.deepStrictEqual(harness.errors, []);
     assert.strictEqual(harness.clipboard.length, 1);
     assert.ok(harness.clipboard[0].includes("[EXCLUDED FILES]"));
-    assert.ok(harness.clipboard[0].includes(`large.txt (${PER_FILE_EXCLUSION_REASON})`));
+    assert.ok(harness.clipboard[0].includes(`large.txt (${PER_FILE_EXCLUSION_REASON}; file size: ${MAX_COPY_FILE_BYTES + 1} bytes)`));
     assert.ok(!harness.clipboard[0].includes("--- File: large.txt"));
     assert.deepStrictEqual(harness.infos, []);
     assert.deepStrictEqual(harness.warnings, [
-      `No file contents copied. Exclusion details copied to the clipboard (${formatPayloadSize(Buffer.byteLength(harness.clipboard[0], "utf8"))}). 1 file was excluded due to size limits.`,
+      `No file contents copied. Exclusion details copied to the clipboard (${formatPayloadSize(Buffer.byteLength(harness.clipboard[0], "utf8"))}). 1 file was excluded due to size limits. large.txt: ${PER_FILE_EXCLUSION_REASON}; file size: ${MAX_COPY_FILE_BYTES + 1} bytes.`,
     ]);
   });
 
@@ -252,10 +265,10 @@ suite("copyFilesForAI", () => {
     assert.deepStrictEqual(harness.infos, []);
     assert.deepStrictEqual(harness.errors, []);
     assert.deepStrictEqual(harness.warnings, [
-      `Copied 1 of 2 files to the clipboard (${formatPayloadSize(Buffer.byteLength(harness.clipboard[0], "utf8"))}). 1 file was excluded due to size limits.`,
+      `Copied 1 of 2 files to the clipboard (${formatPayloadSize(Buffer.byteLength(harness.clipboard[0], "utf8"))}). 1 file was excluded due to size limits. large.txt: ${PER_FILE_EXCLUSION_REASON}; file size: ${MAX_COPY_FILE_BYTES + 1} bytes.`,
     ]);
     assert.ok(harness.clipboard[0].includes("included text"));
-    assert.ok(harness.clipboard[0].includes(`large.txt (${PER_FILE_EXCLUSION_REASON})`));
+    assert.ok(harness.clipboard[0].includes(`large.txt (${PER_FILE_EXCLUSION_REASON}; file size: ${MAX_COPY_FILE_BYTES + 1} bytes)`));
   });
 
   test("reports clipboard failures as errors without a success notification", async () => {

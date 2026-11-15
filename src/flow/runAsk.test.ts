@@ -887,7 +887,7 @@ suite("file Ask includes direct-copy source context", () => {
     const b = path.join(rootA, "b.ts");
     h.deps.addFileContext = async (prompt, _root, selected) => {
       assert.deepEqual(selected, [a, b]);
-      return { payload: prompt, includedCount: 2, sourceCount: 2, excludedCount: 0 };
+      return { payload: prompt, includedCount: 2, sourceCount: 2, excludedCount: 0, exclusions: [] };
     };
     await runAsk({ kind: "file", resourcePath: a, selectedResourcePaths: [a, b, a] }, h.deps);
     assert.deepEqual(h.errors, []);

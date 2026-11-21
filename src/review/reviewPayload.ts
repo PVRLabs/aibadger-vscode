@@ -1,3 +1,4 @@
+import { formatPayloadSize } from "../shared/formatPayloadSize";
 import { isSensitivePath } from "../shared/sensitivePath";
 import { open as nodeOpen } from "node:fs/promises";
 import * as path from "node:path";
@@ -42,6 +43,19 @@ export type ReviewPayloadResult =
   | { ok: false; reason: "mandatory-overflow"; byteLength: number };
 
 export type ReviewFileStatus = { path: string; reason: string };
+
+const TOTAL_BUDGET_REASON = "total review-context budget reached";
+
+export function reviewBudgetWarning(statuses: readonly ReviewFileStatus[], payloadBytes: number, fullFileCount: number): string | undefined {
+  const count = statuses.filter((status) => status.reason === TOTAL_BUDGET_REASON).length;
+  if (count === 0) return undefined;
+
+  const fullContents = fullFileCount > 0
+    ? ` and full contents for ${fullFileCount} ${fullFileCount === 1 ? "file" : "files"}`
+    : "";
+  const limitedFiles = count === 1 ? "1 file" : `${count} files`;
+  return `Copied review request with limited file context (${formatPayloadSize(payloadBytes)}), ready to paste. It includes available Git diffs${fullContents}. The context budget limited ${limitedFiles} to diffs for tracked files or paths for untracked files. See FILE CONTEXT STATUS for details.`;
+}
 
 function byteLength(value: string): number {
   return Buffer.byteLength(value, "utf8");
@@ -378,7 +392,7 @@ export async function buildReviewPayload(
       if (fixed) return [fixed];
       const index = candidateIndexByPath.get(file.relativePath);
       return index !== undefined && index >= excludedFrom && !selected.has(file.relativePath)
-        ? [{ path: file.relativePath, reason: "total review-context budget reached" }]
+        ? [{ path: file.relativePath, reason: TOTAL_BUDGET_REASON }]
         : [];
     });
     const payload = render(

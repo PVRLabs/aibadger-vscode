@@ -51,6 +51,7 @@ function deps(overrides: Partial<ReviewSelectedChangesDeps> = {}) {
       statuses: [],
     }),
     writeClipboard: async (text) => { copied.push(text); },
+    showWarningMessage: (message) => assert.fail(message),
     showInformationMessage: (message) => { info.push(message); },
     showErrorMessage: (message) => { errors.push(message); },
     ...overrides,
@@ -106,6 +107,33 @@ suite("normalizeScmCommandArgs", () => {
 });
 
 suite("reviewSelectedChanges", () => {
+  test("warns after copying a request with budget-omitted file contents", async () => {
+    const warnings: string[] = [];
+    const payload = "diff — FILE CONTEXT STATUS";
+    const harness = deps({
+      buildPayload: async () => ({
+        ok: true,
+        payload,
+        includedFiles: ["c.ts"],
+        statuses: [
+          { path: "a.ts", reason: "total review-context budget reached" },
+          { path: "b.ts", reason: "deleted" },
+        ],
+      }),
+      showWarningMessage: (message) => { warnings.push(message); },
+    });
+
+    await reviewSelectedChanges([resource("/repo/a.ts"), resource("/repo/b.ts"), resource("/repo/c.ts")], harness.base);
+
+    assert.deepEqual(harness.copied, [payload]);
+    assert.deepEqual(harness.errors, []);
+    assert.deepEqual(harness.info, []);
+    assert.equal(warnings.length, 1);
+    assert.match(warnings[0], /Copied review request with limited file context \(28 B\), ready to paste/);
+    assert.match(warnings[0], /available Git diffs and full contents for 1 file/);
+    assert.match(warnings[0], /context budget limited 1 file to diffs for tracked files or paths for untracked files/);
+  });
+
   test("passes only the resolved repository basename to the payload formatter", async () => {
     let suppliedLabel = "";
     const harness = deps({

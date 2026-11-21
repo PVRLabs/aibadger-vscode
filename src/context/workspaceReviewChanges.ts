@@ -1,5 +1,5 @@
 import { buildRepositoryReviewPayload } from "./repositoryReviewChanges";
-import { buildReviewPayload } from "../review/reviewPayload";
+import { buildReviewPayload, reviewBudgetWarning } from "../review/reviewPayload";
 import { MAX_REVIEW_PAYLOAD_BYTES, REVIEW_TASK } from "../review/reviewPayloadPolicy";
 import { workspaceRepositories } from "../review/workspaceReviewContract";
 import { formatPayloadSize } from "../shared/formatPayloadSize";
@@ -13,6 +13,7 @@ export type WorkspaceReviewDeps = {
   buildRepository?: typeof buildRepositoryReviewPayload;
   writeClipboard(text: string): Promise<void>;
   showInformationMessage(message: string): void;
+  showWarningMessage(message: string): void;
   showErrorMessage(message: string): void;
 };
 
@@ -76,7 +77,17 @@ export async function copyWorkspaceChangesForReview(
     return;
   }
   const changedFiles = successful.reduce((total, result) => total + result.changedFiles.length, 0);
+  const payloadBytes = Buffer.byteLength(payload, "utf8");
+  const warning = reviewBudgetWarning(
+    successful.flatMap((result) => result.statuses),
+    payloadBytes,
+    successful.reduce((total, result) => total + result.includedFiles.length, 0)
+  );
+  if (warning) {
+    deps.showWarningMessage(warning);
+    return;
+  }
   deps.showInformationMessage(
-    `Copied workspace review request for ${repositories.length} ${repositories.length === 1 ? "repository" : "repositories"} and ${changedFiles} changed ${changedFiles === 1 ? "file" : "files"} (${formatPayloadSize(Buffer.byteLength(payload, "utf8"))}). Paste it into your AI chat to get a review. Nothing is shared until you paste it.`
+    `Copied workspace review request for ${repositories.length} ${repositories.length === 1 ? "repository" : "repositories"} and ${changedFiles} changed ${changedFiles === 1 ? "file" : "files"} (${formatPayloadSize(payloadBytes)}). Paste it into your AI chat to get a review. Nothing is shared until you paste it.`
   );
 }

@@ -29,6 +29,7 @@ suite("copyWorkspaceChangesForReview", () => {
         statuses: [],
       }),
       writeClipboard: async (text) => { copied.push(text); },
+      showWarningMessage: (message) => assert.fail(message),
       showInformationMessage: () => undefined,
       showErrorMessage: assert.fail,
     });
@@ -37,6 +38,43 @@ suite("copyWorkspaceChangesForReview", () => {
     assert.equal((copied[0].match(/\[REPOSITORY: (?:web|api)\]/g) ?? []).length, 2);
     assert.match(copied[0], /\[REPOSITORY: api\][\s\S]*diff for repo-1[\s\S]*status for repo-1/);
     assert.match(copied[0], /\[REPOSITORY: web\][\s\S]*diff for repo-2[\s\S]*status for repo-2/);
+  });
+
+  test("warns once with combined workspace review totals", async () => {
+    const copied: string[] = [];
+    const warnings: string[] = [];
+    await copyWorkspaceChangesForReview(["/work/api", "/work/web"], {
+      buildRepository: async (scope) => {
+        const includedFiles = scope.repositoryRoot.endsWith("/api")
+          ? ["kept.ts", "another.ts"]
+          : ["kept.ts"];
+        return {
+          ok: true,
+          payload: `[REPOSITORY: ${repositoryLabel(scope.repositoryRoot)}]\ndiff — context`,
+          changedFiles: [...includedFiles, "omitted.ts", "deleted.ts"],
+          includedFiles,
+          statuses: [
+            { path: "omitted.ts", reason: "total review-context budget reached" },
+            { path: "deleted.ts", reason: "deleted" },
+          ],
+        };
+      },
+      writeClipboard: async (text) => { copied.push(text); },
+      showWarningMessage: (message) => {
+        assert.equal(copied.length, 1);
+        warnings.push(message);
+      },
+      showInformationMessage: assert.fail,
+      showErrorMessage: assert.fail,
+    });
+
+    assert.match(copied[0], /\[REPOSITORY: api\]/);
+    assert.match(copied[0], /\[REPOSITORY: web\]/);
+    assert.equal(warnings.length, 1);
+    const size = formatPayloadSize(Buffer.byteLength(copied[0], "utf8"));
+    assert.ok(warnings[0].startsWith(`Copied review request with limited file context (${size}), ready to paste`));
+    assert.match(warnings[0], /full contents for 3 files/);
+    assert.match(warnings[0], /context budget limited 2 files to diffs/);
   });
 
   test("copies one marked aggregate payload atomically", async () => {
@@ -51,6 +89,7 @@ suite("copyWorkspaceChangesForReview", () => {
         statuses: [],
       }),
       writeClipboard: async (text) => { copied.push(text); },
+      showWarningMessage: (message) => assert.fail(message),
       showInformationMessage: (message) => { info.push(message); },
       showErrorMessage: assert.fail,
     });
@@ -74,6 +113,7 @@ suite("copyWorkspaceChangesForReview", () => {
         statuses: [],
       }),
       writeClipboard: async (text) => { copied.push(text); },
+      showWarningMessage: (message) => assert.fail(message),
       showInformationMessage: () => undefined,
       showErrorMessage: assert.fail,
     });
@@ -98,6 +138,7 @@ suite("copyWorkspaceChangesForReview", () => {
       writeClipboard: async (text) => {
         assert.ok(Buffer.byteLength(text, "utf8") <= 512 * 1024);
       },
+      showWarningMessage: (message) => assert.fail(message),
       showInformationMessage: () => undefined,
       showErrorMessage: assert.fail,
     });
@@ -111,6 +152,7 @@ suite("copyWorkspaceChangesForReview", () => {
     await copyWorkspaceChangesForReview([], {
       buildRepository: async () => { throw new Error("must not build"); },
       writeClipboard: async () => { throw new Error("must not copy"); },
+      showWarningMessage: (message) => assert.fail(message),
       showInformationMessage: (message) => { info.push(message); },
       showErrorMessage: assert.fail,
     });
@@ -125,6 +167,7 @@ suite("copyWorkspaceChangesForReview", () => {
         ? { ok: true, payload: "a", changedFiles: ["a.ts"], includedFiles: [], statuses: [] }
         : { ok: false, reason: "git-failed" },
       writeClipboard: async (text) => { copied.push(text); },
+      showWarningMessage: (message) => assert.fail(message),
       showInformationMessage: () => undefined,
       showErrorMessage: (message) => { errors.push(message); },
     });
@@ -137,6 +180,7 @@ suite("copyWorkspaceChangesForReview", () => {
     await copyWorkspaceChangesForReview(["/a"], {
       buildRepository: async () => ({ ok: false, reason: "mandatory-overflow", byteLength: 300000 }),
       writeClipboard: async () => { throw new Error("must not copy"); },
+      showWarningMessage: (message) => assert.fail(message),
       showInformationMessage: () => undefined,
       showErrorMessage: (message) => { errors.push(message); },
     });
@@ -156,6 +200,7 @@ suite("copyWorkspaceChangesForReview", () => {
         statuses: [],
       }),
       writeClipboard: async () => { throw new Error("clipboard unavailable"); },
+      showWarningMessage: (message) => assert.fail(message),
       showInformationMessage: (message) => { info.push(message); },
       showErrorMessage: (message) => { errors.push(message); },
     });
@@ -176,6 +221,7 @@ suite("copyWorkspaceChangesForReview", () => {
         statuses: [],
       }),
       writeClipboard: async (text) => { copied.push(text); },
+      showWarningMessage: (message) => assert.fail(message),
       showInformationMessage: () => undefined,
       showErrorMessage: (message) => { errors.push(message); },
     });

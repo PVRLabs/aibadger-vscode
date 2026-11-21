@@ -27,6 +27,7 @@ suite("repository review commands", () => {
         statuses: [],
       }),
       writeClipboard: async (text: string) => { copied.push(text); },
+      showWarningMessage: (message) => assert.fail(message),
       showInformationMessage: (message) => info.push(message),
       showErrorMessage: (message) => errors.push(message),
     });
@@ -38,6 +39,37 @@ suite("repository review commands", () => {
     assert.match(info[0], /Nothing is shared until you paste it\./);
   });
 
+  test("warns after copying repository review context limited by the budget", async () => {
+    const copied: string[] = [];
+    const warnings: string[] = [];
+    const payload = "diff — context";
+
+    await copyAllChangesForReview(target(), {
+      buildPayload: async () => ({
+        ok: true,
+        payload,
+        changedFiles: ["kept.ts", "omitted.ts", "deleted.ts"],
+        includedFiles: ["kept.ts"],
+        statuses: [
+          { path: "omitted.ts", reason: "total review-context budget reached" },
+          { path: "deleted.ts", reason: "deleted" },
+        ],
+      }),
+      writeClipboard: async (text) => { copied.push(text); },
+      showWarningMessage: (message) => {
+        assert.deepEqual(copied, [payload]);
+        warnings.push(message);
+      },
+      showInformationMessage: assert.fail,
+      showErrorMessage: assert.fail,
+    });
+
+    assert.equal(warnings.length, 1);
+    assert.match(warnings[0], /Copied review request with limited file context \(16 B\), ready to paste/);
+    assert.match(warnings[0], /full contents for 1 file/);
+    assert.match(warnings[0], /context budget limited 1 file to diffs/);
+  });
+
   test("does not use a fallback target or write on failure", async () => {
     const copied: string[] = [];
     const errors: string[] = [];
@@ -47,6 +79,7 @@ suite("repository review commands", () => {
         throw new Error("must not run");
       },
       writeClipboard: async (text: string) => { copied.push(text); },
+      showWarningMessage: (message) => assert.fail(message),
       showInformationMessage: () => undefined,
       showErrorMessage: (message) => errors.push(message),
     });
@@ -58,6 +91,7 @@ suite("repository review commands", () => {
     await copyAllChangesForReview(target(), {
       buildPayload: async () => ({ ok: false, reason: "no-change" as const }),
       writeClipboard: async (text: string) => { copiedAfterFailure.push(text); },
+      showWarningMessage: (message) => assert.fail(message),
       showInformationMessage: () => undefined,
       showErrorMessage: (message) => errors.push(message),
     });
@@ -71,6 +105,7 @@ suite("repository review commands", () => {
     await copyAllChangesForReview(target(), {
       buildPayload: async () => ({ ok: false, reason: "mandatory-overflow", byteLength: 600000 }),
       writeClipboard: async (text) => { copied.push(text); },
+      showWarningMessage: (message) => assert.fail(message),
       showInformationMessage: () => undefined,
       showErrorMessage: (message) => errors.push(message),
     });

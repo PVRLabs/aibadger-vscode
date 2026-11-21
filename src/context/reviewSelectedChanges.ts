@@ -11,6 +11,7 @@ import { formatByteSize } from "../flow/promptSummary";
 import {
   buildReviewPayload,
   repositoryLabel,
+  reviewBudgetWarning,
   type ReviewChangeKind,
   type ReviewPayloadFile,
   type ReviewPayloadResult,
@@ -36,6 +37,7 @@ export type ReviewSelectedChangesDeps = {
   buildPayload?: typeof buildReviewPayload;
   writeClipboard(text: string): Promise<void>;
   showInformationMessage(message: string): void;
+  showWarningMessage(message: string): void;
   showErrorMessage(message: string): void;
 };
 
@@ -195,8 +197,14 @@ export async function reviewSelectedChanges(
       deps.showErrorMessage("Could not write the review request to the clipboard.");
       return;
     }
+    const payloadBytes = Buffer.byteLength(payload.payload, "utf8");
+    const warning = reviewBudgetWarning(payload.statuses, payloadBytes, payload.includedFiles.length);
+    if (warning) {
+      deps.showWarningMessage(warning);
+      return;
+    }
     deps.showInformationMessage(
-      selectedCountMessage(files.length, Buffer.byteLength(payload.payload, "utf8"))
+      selectedCountMessage(files.length, payloadBytes)
     );
   } catch {
     deps.showErrorMessage(`Could not prepare selected changes for review (${stage}).`);

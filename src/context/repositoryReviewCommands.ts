@@ -1,3 +1,4 @@
+import { reviewBudgetWarning } from "../review/reviewPayload";
 import { formatByteSize } from "../flow/promptSummary";
 import { buildRepositoryReviewPayload } from "./repositoryReviewChanges";
 import {
@@ -28,6 +29,7 @@ export type RepositoryReviewCommandDeps = {
   buildPayload?: typeof buildRepositoryReviewPayload;
   writeClipboard(text: string): Promise<void>;
   showInformationMessage(message: string): void;
+  showWarningMessage(message: string): void;
   showErrorMessage(message: string): void;
 };
 
@@ -103,10 +105,16 @@ export async function copyAllChangesForReview(
     deps.showErrorMessage(REPOSITORY_REVIEW_COPY_FAILURE_MESSAGE);
     return;
   }
+  const payloadBytes = Buffer.byteLength(result.payload, "utf8");
+  const warning = reviewBudgetWarning(result.statuses, payloadBytes, result.includedFiles.length);
+  if (warning) {
+    deps.showWarningMessage(warning);
+    return;
+  }
   deps.showInformationMessage(
     repositoryReviewSuccessMessage(
       result.changedFiles.length,
-      Buffer.byteLength(result.payload, "utf8")
+      payloadBytes
     )
   );
 }

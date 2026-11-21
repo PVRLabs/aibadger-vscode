@@ -177,6 +177,7 @@ export function activate(
           writeClipboard: async (text) => {
             await vscode.env.clipboard.writeText(text);
           },
+          showWarningMessage: (message) => { void vscode.window.showWarningMessage(message); },
           showInformationMessage: (message) => {
             void vscode.window.showInformationMessage(message);
           },
@@ -194,6 +195,7 @@ export function activate(
           writeClipboard: async (text) => {
             await vscode.env.clipboard.writeText(text);
           },
+          showWarningMessage: (message) => { void vscode.window.showWarningMessage(message); },
           showInformationMessage: (message) => {
             void vscode.window.showInformationMessage(message);
           },
@@ -210,6 +212,7 @@ export function activate(
           await changedWorkspaceRepositoryRoots(),
           {
             writeClipboard: async (text) => vscode.env.clipboard.writeText(text),
+            showWarningMessage: (message) => { void vscode.window.showWarningMessage(message); },
             showInformationMessage: (message) => { void vscode.window.showInformationMessage(message); },
             showErrorMessage: (message) => { void vscode.window.showErrorMessage(message); },
           }

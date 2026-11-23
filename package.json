@@ -2,7 +2,7 @@
   "name": "ai-badger",
   "displayName": "AI Badger",
   "description": "Review Git changes and copy code context for ChatGPT, Claude, Gemini, Grok, or any AI chat. Local-first; Badger CLI optional.",
-  "version": "0.1.9-dev",
+  "version": "0.1.9",
   "publisher": "pvrlabs",
   "license": "MIT",
   "icon": "media/ai-badger-icon.png",
@@ -353,7 +353,7 @@
     "@vscode/vsce": "^3.9.2",
     "eslint": "^8.57.1",
     "glob": "^11.0.0",
-    "mocha": "^12.0.0-rc.2",
+    "mocha": "^12.0.3",
     "typescript": "^5.7.2"
   }
 }

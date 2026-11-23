@@ -4,6 +4,14 @@ All notable changes to the AI Badger VS Code extension are documented here.
 
 ## [Unreleased]
 
+## [0.1.9] - 2026-11-23
+
+- **Copy Files for AI** now gives more detail when size limits exclude files
+  and offers a retry with higher limits.
+- Copied review requests now warn when the context budget limits tracked
+  files to diffs or untracked files to paths.
+- Updated the development test runner to Mocha 12.0.3.
+
 ## [0.1.8] - 2026-11-13
 
 - Deep Review now offers a **Broader context** preset for changes whose effects
